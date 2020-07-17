@@ -17,14 +17,6 @@ class Thermostat extends MerossDevice {
     }));
   }
 
-  async setFanMode(value) {
-    return await this._api.setState({
-      devId: this._deviceId,
-      command: 'windSpeedSet',
-      setState: value,
-    });
-  }
-
   async setOperationMode(value) {
     return fetch(`${this._url}/device/${this._deviceId}/mode?value=${value}`, {
       method: 'POST',
@@ -42,15 +34,7 @@ class Thermostat extends MerossDevice {
   }
 
   async supportsMode() {
-    return await this.supportsFeature('mode');
-  }
-
-  async supportsWindspeed() {
-    return await this.supportsFeature('windspeed');
-  }
-
-  async supportsHumidity() {
-    return await this.supportsFeature('humidity');
+    return true;
   }
 }
 module.exports = Thermostat;
