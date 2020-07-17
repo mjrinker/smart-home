@@ -1,0 +1,686 @@
+[
+  {
+    "name": "Test-1",
+    "schedules": [
+      {
+        "days_of_week": [
+          "tue"
+        ],
+        "time": "17:30:00"
+      }
+    ],
+    "actions": [
+      {
+        "device_type": "bulb",
+        "device_name": "Matt Office 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "rgb": [
+              0,
+              255,
+              255
+            ]
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Matt Office 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "rgb": [
+              255,
+              0,
+              255
+            ]
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Matt Office 3",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "rgb": [
+              255,
+              255,
+              0
+            ]
+          },
+          {
+            "type": "off"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Test-2",
+    "schedules": [
+      {
+        "days_of_week": [
+          "tue"
+        ],
+        "time": "17:31:02"
+      }
+    ],
+    "actions": [
+      {
+        "device_type": "bulb",
+        "device_name": "Matt Office 1",
+        "ignore_if_on": false,
+        "sequence": [
+          {
+            "type": "color",
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Matt Office 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Matt Office 3",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Evening All",
+    "schedules": [
+      {
+        "days_of_week": [
+          "sun",
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat"
+        ],
+        "time": "21:00:00"
+      }
+    ],
+    "actions": [
+      {
+        "device_type": "bulb",
+        "device_name": "Living Room 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 15,
+            "luminance": 7
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Living Room 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 15,
+            "luminance": 7
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Living Room 3",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 15,
+            "luminance": 7
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Living Room 4",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 15,
+            "luminance": 7
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Dining Chandelier 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 25,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Dining Chandelier 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 25,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Dining Chandelier 3",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 25,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Dining Chandelier 4",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 25,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Dining Chandelier 5",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 25,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Kitchen Hanging 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 0,
+            "luminance": 5
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Kitchen Hanging 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 0,
+            "luminance": 5
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Kitchen 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 33,
+            "luminance": 15
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Kitchen 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 33,
+            "luminance": 15
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Kitchen 3",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 33,
+            "luminance": 15
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Hall 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 25,
+            "luminance": 15
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Hall 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 25,
+            "luminance": 15
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Hall 3",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 25,
+            "luminance": 15
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Hall 4",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 25,
+            "luminance": 15
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Matt Office 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 45,
+            "luminance": 8
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Matt Office 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 45,
+            "luminance": 8
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Matt Office 3",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 45,
+            "luminance": 8
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Ashlee's Office 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 45,
+            "luminance": 8
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Ashlee's Office 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 45,
+            "luminance": 8
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Ashlee's Office 3",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 45,
+            "luminance": 8
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Master Bedroom 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 33,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Master Bedroom 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 33,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Master Bedroom 3",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 33,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Bedroom lamp",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 25,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Master Vanity 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 15,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Master Vanity 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 15,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Master Vanity 3",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 15,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Master Vanity 4",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 15,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Master Bath 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 15,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Master Bath 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 15,
+            "luminance": 10
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Closet 1",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 45,
+            "luminance": 12
+          },
+          {
+            "type": "off"
+          }
+        ]
+      },
+      {
+        "device_type": "bulb",
+        "device_name": "Closet 2",
+        "ignore_if_on": true,
+        "sequence": [
+          {
+            "type": "color",
+            "temperature": 45,
+            "luminance": 12
+          },
+          {
+            "type": "off"
+          }
+        ]
+      }
+    ]
+  }
+]

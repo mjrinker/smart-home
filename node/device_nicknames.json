@@ -1,0 +1,968 @@
+{
+    "Candle": {
+        "ids": ["10021424b4e62d5b016d_1", "10021424b4e62d5b016d_7"],
+        "platform": "tuya",
+        "presets": {}
+    },
+    "Candle Socket": {
+        "ids": "10021424b4e62d5b016d_1",
+        "platform": "tuya",
+        "presets": {}
+    },
+    "Air Freshener": "Socket",
+    "Vanity USB": {
+        "ids": "10021424b4e62d5b016d_7",
+        "platform": "tuya",
+        "presets": {}
+    },
+    "Office Smart Socket": {
+        "ids": ["10021424ecfabc29d946_1", "10021424ecfabc29d946_7"],
+        "platform": "tuya",
+        "presets": {}
+    },
+    "Nargothrond": {
+        "ids": "10021424ecfabc29d946_1",
+        "platform": "tuya",
+        "presets": {}
+    },
+    "Computer": "Nargothrond",
+    "Plex": "Nargothrond",
+    "Matt's USB Charger (office)": {
+        "ids": "10021424ecfabc29d946_7",
+        "platform": "tuya",
+        "presets": {}
+    },
+    "TV/Roku": {
+        "ids": ["10021424b4e62d5b0676_1", "10021424b4e62d5b0676_7"],
+        "platform": "tuya",
+        "presets": {
+            "Movie": "on"
+        }
+    },
+    "TV": {
+        "ids": "10021424b4e62d5b0676_1",
+        "platform": "tuya",
+        "presets": {
+            "Movie": "on"
+        }
+    },
+    "Roku": {
+        "ids": "10021424b4e62d5b0676_7",
+        "platform": "tuya",
+        "presets": {
+            "Movie": "on"
+        }
+    },
+    "Matt Phone Charger": {
+        "ids": ["10021424b4e62d5b11b4_1", "10021424b4e62d5b11b4_7"],
+        "platform": "tuya",
+        "presets": {}
+    },
+    "Matt's Charger Socket": {
+        "ids": "10021424b4e62d5b11b4_1",
+        "platform": "tuya",
+        "presets": {}
+    },
+    "Matt's USB Charger (bedroom)": {
+        "ids": "10021424b4e62d5b11b4_7",
+        "platform": "tuya",
+        "presets": {}
+    },
+    "Matt's USB Charger": {
+        "ids": ["10021424ecfabc29d946_7", "10021424b4e62d5b11b4_7"],
+        "platform": "tuya",
+        "presets": {}
+    },
+    "Master Bath": {
+        "ids": ["1909205143912290802548e1e9526e05", "1909201427743090802548e1e952764b"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 56
+            },
+            "Good Morning": {
+                "brightness": 50,
+                "temperature": 56
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 37
+            },
+            "Bedtime": {
+                "brightness": 10,
+                "temperature": 37
+            }
+        }
+    },
+    "Master Bath 1": {
+        "ids": "1909205143912290802548e1e9526e05",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 56
+            },
+            "Good Morning": {
+                "brightness": 50,
+                "temperature": 56
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 37
+            },
+            "Bedtime": {
+                "brightness": 10,
+                "temperature": 37
+            },
+            "Nightlight": {
+                "brightness": 1,
+                "color": "#ff6201"
+            }
+        }
+    },
+    "Master Bath 2": {
+        "ids": "1909201427743090802548e1e952764b",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 56
+            },
+            "Good Morning": {
+                "brightness": 50,
+                "temperature": 56
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 37
+            },
+            "Bedtime": {
+                "brightness": 10,
+                "temperature": 37
+            }
+        }
+    },
+    "Bathroom": "Master Bath",
+    "Master Bedroom": {
+        "ids": ["1909203216975990802548e1e9527050", "1909207153246790802548e1e95281ed", "1909204719826890802548e1e9526cbc"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 67,
+                "temperature": 65
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 33
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Master Bedroom 1": {
+        "ids": "1909203216975990802548e1e9527050",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 67,
+                "temperature": 65
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 33
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Master Bedroom 2": {
+        "ids": "1909207153246790802548e1e95281ed",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 67,
+                "temperature": 65
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 33
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Master Bedroom 3": {
+        "ids": "1909204719826890802548e1e9526cbc",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 67,
+                "temperature": 65
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 33
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Bedroom": "Master Bedroom",
+    "Bedroom lamp": {
+        "ids": "1909207713761790802548e1e95272d5",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 50,
+                "temperature": 55
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 23
+            },
+            "Bedtime": {
+                "brightness": 10,
+                "temperature": 23
+            },
+            "Nightlight": {
+                "brightness": 1,
+                "color": "#ff6201"
+            }
+        }
+    },
+    "Ashlee's Office": {
+        "ids": ["1909202461469090802548e1e95275d8", "1909202461469090802548e1e95275d8", "1909204889052390802548e1e95267e1"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 39
+            },
+            "Evening": {
+                "brightness": 8,
+                "temperature": 39
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Ashlee's Office 1": {
+        "ids": "1909202461469090802548e1e95275d8",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 39
+            },
+            "Evening": {
+                "brightness": 8,
+                "temperature": 39
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Ashlee's Office 2": {
+        "ids": "1909208074936090802548e1e952713a",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 39
+            },
+            "Evening": {
+                "brightness": 8,
+                "temperature": 39
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Ashlee's Office 3": {
+        "ids": "1909204889052390802548e1e95267e1",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 39
+            },
+            "Evening": {
+                "brightness": 8,
+                "temperature": 39
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Ashlee Office": "Ashlee's Office",
+    "Ashlee Office 1": "Ashlee's Office 1",
+    "Ashlee Office 2": "Ashlee's Office 2",
+    "Ashlee Office 3": "Ashlee's Office 3",
+    "Matt Office": {
+        "ids": ["1909204138839390802548e1e9526d83", "1909209096522490802548e1e9527eaa", "1909205060573590802548e1e9527aaf"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 39
+            },
+            "Evening": {
+                "brightness": 8,
+                "temperature": 39
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Matt Office 1": {
+        "ids": "1909204138839390802548e1e9526d83",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 39
+            },
+            "Evening": {
+                "brightness": 8,
+                "temperature": 39
+            },
+            "Bedtime": "off",
+            "Test": {
+              "color": "#ff0000"
+            }
+        }
+    },
+    "Matt Office 2": {
+        "ids": "1909209096522490802548e1e9527eaa",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 39
+            },
+            "Evening": {
+                "brightness": 8,
+                "temperature": 39
+            },
+            "Bedtime": "off",
+            "Test": {
+              "color": "#00ff00"
+            }
+        }
+    },
+    "Matt Office 3": {
+        "ids": "1909205060573590802548e1e9527aaf",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 39
+            },
+            "Evening": {
+                "brightness": 8,
+                "temperature": 39
+            },
+            "Bedtime": "off",
+            "Test": {
+              "color": "#0000ff"
+            }
+        }
+    },
+    "Matt's Office": "Matt Office",
+    "Matt's Office 1": "Matt Office 1",
+    "Matt's Office 2": "Matt Office 2",
+    "Matt's Office 3": "Matt Office 3",
+    "Guest Room": "Matt Office",
+    "Guest Room 1": "Matt Office 1",
+    "Guest Room 2": "Matt Office 2",
+    "Guest Room 3": "Matt Office 3",
+    "Guest Bedroom": "Matt Office",
+    "Guest Bedroom 1": "Matt Office 1",
+    "Guest Bedroom 2": "Matt Office 2",
+    "Guest Bedroom 3": "Matt Office 3",
+    "Office": ["Ashlee's Office", "Matt Office"],
+    "Office 1": ["Ashlee's Office 1", "Matt Office 1"],
+    "Office 2": ["Ashlee's Office 2", "Matt Office 2"],
+    "Office 3": ["Ashlee's Office 3", "Matt Office 3"],
+    "Kitchen": {
+        "ids": ["1909207339091590802548e1e952717b", "1909209187918890802548e1e95269a7", "1909208906307090802548e1e95266a8", "1909204444070390802548e1e952664e", "1909204332519190802548e1e95282bb"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 31
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Kitchen Main": {
+        "ids": ["1909207339091590802548e1e952717b", "1909209187918890802548e1e95269a7", "1909208906307090802548e1e95266a8"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 31
+            },
+            "Evening": {
+                "brightness": 15,
+                "temperature": 26
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Kitchen 1": {
+        "ids": "1909207339091590802548e1e952717b",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 31
+            },
+            "Evening": {
+                "brightness": 15,
+                "temperature": 26
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        },
+        "timeBased": {
+          "on": {
+            "sunset-1h->sunrise": "Evening",
+            "default": "Daytime"
+          },
+          "toggle": {
+            "on": {
+              "sunset-1h->sunrise": "Evening",
+              "default": "Daytime"
+            }
+          }
+        }
+    },
+    "Kitchen 2": {
+        "ids": "1909209187918890802548e1e95269a7",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 31
+            },
+            "Evening": {
+                "brightness": 15,
+                "temperature": 26
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Kitchen 3": {
+        "ids": "1909208906307090802548e1e95266a8",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 31
+            },
+            "Evening": {
+                "brightness": 15,
+                "temperature": 26
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Kitchen Hanging": {
+        "ids": ["1909204444070390802548e1e952664e", "1909204332519190802548e1e95282bb"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 31
+            },
+            "Evening": {
+                "brightness": 5,
+                "temperature": 1
+            },
+            "Movie": {
+                "brightness": 5,
+                "temperature": 1
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Kitchen Hanging 1": {
+        "ids": "1909204444070390802548e1e952664e",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 31
+            },
+            "Evening": {
+                "brightness": 5,
+                "temperature": 1
+            },
+            "Movie": {
+                "brightness": 5,
+                "temperature": 1
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Kitchen Hanging 2": {
+        "ids": "1909204332519190802548e1e95282bb",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 31
+            },
+            "Evening": {
+                "brightness": 5,
+                "temperature": 1
+            },
+            "Movie": {
+                "brightness": 5,
+                "temperature": 1
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Hall": {
+        "ids": ["1909209011876790802548e1e952689d", "1909206181490590802548e1e9527bd2", "1909200779268290802548e1e9527bdb", "1909205384940990802548e1e952726a"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 50
+            },
+            "Evening": {
+                "brightness": 15,
+                "temperature": 25
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Hall 1": {
+        "ids": "1909209011876790802548e1e952689d",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 50
+            },
+            "Evening": {
+                "brightness": 15,
+                "temperature": 25
+            },
+            "Movie": "off",
+            "Bedtime": "off",
+            "Nightlight": {
+                "brightness": 1,
+                "color": "#ff6201"
+            }
+        }
+    },
+    "Hall 2": {
+        "ids": "1909206181490590802548e1e9527bd2",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 50
+            },
+            "Evening": {
+                "brightness": 15,
+                "temperature": 25
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Hall 3": {
+        "ids": "1909200779268290802548e1e9527bdb",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 50
+            },
+            "Evening": {
+                "brightness": 15,
+                "temperature": 25
+            },
+            "Movie": "off",
+            "Bedtime": "off",
+            "Nightlight": {
+                "brightness": 1,
+                "color": "#ff6201"
+            }
+        }
+    },
+    "Hall 4": {
+        "ids": "1909205384940990802548e1e952726a",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 50
+            },
+            "Evening": {
+                "brightness": 15,
+                "temperature": 25
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Hallway": "Hall",
+    "Hallway 1": "Hall 1",
+    "Hallway 2": "Hall 2",
+    "Hallway 3": "Hall 3",
+    "Hallway 4": "Hall 4",
+    "Closet": {
+        "ids": ["1909209533875690802548e1e952687f", "1909202315369590802548e1e95266a9"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 100,
+                "temperature": 65
+            },
+            "Evening": {
+                "brightness": 12,
+                "temperature": 39
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Closet 1": {
+        "ids": "1909209533875690802548e1e952687f",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 100,
+                "temperature": 65
+            },
+            "Evening": {
+                "brightness": 12,
+                "temperature": 39
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Closet 2": {
+        "ids": "1909202315369590802548e1e95266a9",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 100,
+                "temperature": 65
+            },
+            "Evening": {
+                "brightness": 12,
+                "temperature": 39
+            },
+            "Bedtime": "off"
+        }
+    },
+    "Master Vanity": {
+        "ids": ["1909201385910590802548e1e952771b", "1909204971291490802548e1e95265f0", "1909207580032190802548e1e95284ad", "1909207860645390802548e1e9526a5e"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 51
+            },
+            "Good Morning": {
+                "brightness": 18,
+                "temperature": 33
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 15
+            },
+            "Bedtime": {
+                "brightness": 10,
+                "temperature": 15
+            }
+        }
+    },
+    "Master Vanity 1": {
+        "ids": "1909201385910590802548e1e952771b",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 51
+            },
+            "Good Morning": {
+                "brightness": 18,
+                "temperature": 33
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 15
+            },
+            "Bedtime": {
+                "brightness": 10,
+                "temperature": 15
+            }
+        }
+    },
+    "Master Vanity 2": {
+        "ids": "1909204971291490802548e1e95265f0",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 51
+            },
+            "Good Morning": {
+                "brightness": 18,
+                "temperature": 33
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 15
+            },
+            "Bedtime": {
+                "brightness": 10,
+                "temperature": 15
+            },
+            "Nightlight": {
+                "brightness": 1,
+                "color": "#ff6201"
+            }
+        }
+    },
+    "Master Vanity 3": {
+        "ids": "1909207580032190802548e1e95284ad",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 51
+            },
+            "Good Morning": {
+                "brightness": 18,
+                "temperature": 33
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 15
+            },
+            "Bedtime": {
+                "brightness": 10,
+                "temperature": 15
+            }
+        }
+    },
+    "Master Vanity 4": {
+        "ids": "1909207860645390802548e1e9526a5e",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 51
+            },
+            "Good Morning": {
+                "brightness": 18,
+                "temperature": 33
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 15
+            },
+            "Bedtime": {
+                "brightness": 10,
+                "temperature": 15
+            }
+        }
+    },
+    "Vanity": "Master Vanity",
+    "Vanity 1": "Master Vanity 1",
+    "Vanity 2": "Master Vanity 2",
+    "Vanity 3": "Master Vanity 3",
+    "Vanity 4": "Master Vanity 4",
+    "Living Room": {
+        "ids": ["1909208099330390802548e1e952724b", "1909209106213290802548e1e9527673", "1909206601158890802548e1e952803f", "1909205690321990802548e1e95272c3"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 33
+            },
+            "Evening": {
+                "brightness": 7,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Living Room 1": {
+        "ids": "1909208099330390802548e1e952724b",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 33
+            },
+            "Evening": {
+                "brightness": 7,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Living Room 2": {
+        "ids": "1909209106213290802548e1e9527673",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 33
+            },
+            "Evening": {
+                "brightness": 7,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Living Room 3": {
+        "ids": "1909206601158890802548e1e952803f",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 33
+            },
+            "Evening": {
+                "brightness": 7,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Living Room 4": {
+        "ids": "1909205690321990802548e1e95272c3",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 75,
+                "temperature": 33
+            },
+            "Evening": {
+                "brightness": 7,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Dining Chandelier": {
+        "ids": ["1909201173069090802548e1e9527d71", "1909209351276590802548e1e9526d54", "1909201157767590802548e1e95281ec", "1909203866252390802548e1e9527008", "1909203726704190802548e1e9526c6b"],
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 66,
+                "temperature": 24
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Dining Chandelier 1": {
+        "ids": "1909201173069090802548e1e9527d71",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 66,
+                "temperature": 24
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Dining Chandelier 2": {
+        "ids": "1909209351276590802548e1e9526d54",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 66,
+                "temperature": 24
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Dining Chandelier 3": {
+        "ids": "1909201157767590802548e1e95281ec",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 66,
+                "temperature": 24
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Dining Chandelier 4": {
+        "ids": "1909203866252390802548e1e9527008",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 66,
+                "temperature": 24
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Dining Chandelier 5": {
+        "ids": "1909203726704190802548e1e9526c6b",
+        "platform": "meross",
+        "presets": {
+            "Daytime": {
+                "brightness": 66,
+                "temperature": 24
+            },
+            "Evening": {
+                "brightness": 10,
+                "temperature": 24
+            },
+            "Movie": "off",
+            "Bedtime": "off"
+        }
+    },
+    "Dining Room": "Dining Chandelier",
+    "Dining Room 1": "Dining Chandelier 1",
+    "Dining Room 2": "Dining Chandelier 2",
+    "Dining Room 3": "Dining Chandelier 3",
+    "Dining Room 4": "Dining Chandelier 4",
+    "Dining Room 5": "Dining Chandelier 5",
+    "Chandelier": "Dining Chandelier",
+    "Chandelier 1": "Dining Chandelier 1",
+    "Chandelier 2": "Dining Chandelier 2",
+    "Chandelier 3": "Dining Chandelier 3",
+    "Chandelier 4": "Dining Chandelier 4",
+    "Chandelier 5": "Dining Chandelier 5"
+}
