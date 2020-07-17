@@ -36,7 +36,7 @@ const location = {
 process.env.TZ = location.timezone;
 
 let apiKeys = {};
-let deviceNicknames = {};
+let deviceConfig = {};
 let scenes = {};
 
 try {
@@ -46,11 +46,11 @@ try {
 }
 
 try {
-  deviceNicknames = require('./device_nicknames.json');
+  deviceConfig = require('./device_config.json');
 } catch (err) {
   console.error(err);
-  console.warn('device_nicknames.json is missing. creating temporary');
-  deviceNicknames = {};
+  console.warn('device_config.json is missing. creating temporary');
+  deviceConfig = {};
 }
 
 try {
@@ -216,7 +216,7 @@ fn.getAliasIds = (nickname, parentPath = '') => {
   }
 
   parentPath += `.${nickname}`;
-  let subDeviceInfo = deviceNicknames[fn.slugify(nickname)] || {};
+  let subDeviceInfo = deviceConfig[fn.slugify(nickname)] || {};
   return fn.getDeviceIds(subDeviceInfo, parentPath) || [];
 };
 
@@ -442,7 +442,7 @@ fn.merossRequest = async (deviceId, devicePresets, action, queryParams) => {
   }));
 };
 
-deviceNicknames = fn.slugifyKeys(deviceNicknames);
+deviceConfig = fn.slugifyKeys(deviceConfig);
 scenes = fn.slugifyKeys(scenes);
 
 const performDeviceActions = async (deviceNicknamesList, action, value, queryParams = null) => {
@@ -463,7 +463,7 @@ const performDeviceActions = async (deviceNicknamesList, action, value, queryPar
     let deviceCounter = 0;
 
     deviceNicknamesList.forEach((deviceNickname) => {
-      const deviceInfo = deviceNicknames[fn.slugify(deviceNickname)] || {};
+      const deviceInfo = deviceConfig[fn.slugify(deviceNickname)] || {};
       let deviceIdsInfo = [];
       try {
         deviceIdsInfo = fn.getDeviceIds(deviceInfo, deviceNickname);
