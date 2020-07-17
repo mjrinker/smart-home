@@ -7,7 +7,7 @@ from urllib import parse
 from meross_iot.cloud.device import AbstractMerossDevice
 from meross_iot.cloud.devices.door_openers import GenericGarageDoorOpener
 from meross_iot.cloud.devices.hubs import GenericHub
-from meross_iot.cloud.devices.humidifier import GenericHumidifier, SprayMode
+from meross_iot.cloud.devices.humidifier import GenericHumidifier
 from meross_iot.cloud.devices.light_bulbs import GenericBulb
 from meross_iot.cloud.devices.power_plugs import GenericPlug
 from meross_iot.cloud.devices.subdevices.thermostats import ValveSubDevice, ThermostatV3Mode, ThermostatMode
@@ -113,6 +113,69 @@ def get_device(device_uuid):
         return manager.get_device_by_uuid(device_uuid)
 
 
+def ACTION_NOT_SUPPORTED_ERROR(name, action):
+    return jsonify({
+        'success': False,
+        'status': 400,
+        'error': 'ACTION_NOT_SUPPORTED',
+        'message': f'Device {name} does not support action {action}'
+    }), 400
+
+
+def VALUE_REQUIRED_ERROR(name, action):
+    jsonify({
+        'success': False,
+        'status': 400,
+        'error': 'VALUE_REQUIRED',
+        'message': f'A value must be set to set the {action} of device {name}'
+    }), 400
+
+
+def INVALID_VALUE_ERROR(name, action, value, expected_type):
+    jsonify({
+        'success': False,
+        'status': 400,
+        'error': 'INVALID_VALUE',
+        'message': f'Invalid value for {action} of device {name}; Expected: <{expected_type}>, Got: {value}'
+    }), 400
+
+
+def DEVICE_NOT_FOUND_ERROR(uuid):
+    return jsonify({
+        'success': False,
+        'status': 404,
+        'error': 'DEVICE_NOT_FOUND',
+        'message': f'Cannot find device {uuid}'
+    }), 404
+
+
+def ACTION_NOT_FOUND_ERROR(action):
+    return jsonify({
+        'success': False,
+        'status': 404,
+        'error': 'ACTION_NOT_FOUND',
+        'message': f'Cannot find action {action}'
+    }), 404
+
+
+def SETTING_NOT_FOUND_ERROR(name, action, value):
+    return jsonify({
+        'success': False,
+        'status': 404,
+        'error': 'SETTING_NOT_FOUND',
+        'message': f'Cannot find mode {value} for {action} of device {name}'
+    }), 404
+
+
+def DEVICE_OFFLINE_ERROR(uuid):
+    return jsonify({
+        'success': False,
+        'status': 503,
+        'error': 'DEVICE_OFFLINE',
+        'message': f'Device {uuid} is offline'
+    }), 503
+
+
 @api.route('/device/<uuid>/is_on', methods=['GET'])
 def is_on(uuid):
     device = get_device(uuid)
@@ -188,69 +251,6 @@ def get_skills(uuid):
             'spray': SPRAY in device.get_abilities()
         }
     })
-
-
-def ACTION_NOT_SUPPORTED_ERROR(name, action):
-    return jsonify({
-        'success': False,
-        'status': 400,
-        'error': 'ACTION_NOT_SUPPORTED',
-        'message': f'Device {name} does not support action {action}'
-    }), 400
-
-
-def VALUE_REQUIRED_ERROR(name, action):
-    jsonify({
-        'success': False,
-        'status': 400,
-        'error': 'VALUE_REQUIRED',
-        'message': f'A value must be set to set the {action} of device {name}'
-    }), 400
-
-
-def INVALID_VALUE_ERROR(name, action, value, expected_type):
-    jsonify({
-        'success': False,
-        'status': 400,
-        'error': 'INVALID_VALUE',
-        'message': f'Invalid value for {action} of device {name}; Expected: <{expected_type}>, Got: {value}'
-    }), 400
-
-
-def DEVICE_NOT_FOUND_ERROR(uuid):
-    return jsonify({
-        'success': False,
-        'status': 404,
-        'error': 'DEVICE_NOT_FOUND',
-        'message': f'Cannot find device {uuid}'
-    }), 404
-
-
-def ACTION_NOT_FOUND_ERROR(action):
-    return jsonify({
-        'success': False,
-        'status': 404,
-        'error': 'ACTION_NOT_FOUND',
-        'message': f'Cannot find action {action}'
-    }), 404
-
-
-def SETTING_NOT_FOUND_ERROR(name, action, value):
-    return jsonify({
-        'success': False,
-        'status': 404,
-        'error': 'SETTING_NOT_FOUND',
-        'message': f'Cannot find mode {value} for {action} of device {name}'
-    }), 404
-
-
-def DEVICE_OFFLINE_ERROR(uuid):
-    return jsonify({
-        'success': False,
-        'status': 503,
-        'error': 'DEVICE_OFFLINE',
-        'message': f'Device {uuid} is offline'
-    }), 503
 
 
 @api.route('/device/<uuid>/<action>', methods=['POST'])
