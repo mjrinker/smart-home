@@ -15,17 +15,19 @@ const Light = require('./devices/tuya/light');
 
 const MerossDevice = require('./devices/meross/device');
 const Bulb = require('./devices/meross/bulb');
-const Plug = require('./devices/meross/plug');
-const Hub = require('./devices/meross/hub');
-const Humidifier = require('./devices/meross/humidier');
-const DoorOpener = require('./devices/meross/doorOpener');
-const Sensor = require('./devices/meross/sensor');
 const Thermostat = require('./devices/meross/thermostat');
+// todo add more device classes:
+// const Plug = require('./devices/meross/plug');
+// const Hub = require('./devices/meross/hub');
+// const Humidifier = require('./devices/meross/humidier');
+// const DoorOpener = require('./devices/meross/doorOpener');
+// const Sensor = require('./devices/meross/sensor');
 
 const app = express();
 const port = 3030;
 const merossURL = 'localhost';
 const merossPort = 5000;
+const merossFullURL = `http://${merossURL}:${merossPort}`;
 
 const location = {
   lat: 40.307444,
@@ -60,6 +62,28 @@ try {
   console.warn('scenes.json is missing. creating temporary');
   scenes = {};
 }
+
+try {
+  colors = require('./colors.json');
+} catch (err) {
+  console.error(err);
+  console.warn('colors.json is missing. creating temporary');
+  colors = {};
+}
+
+const deviceTypeClassMap = {
+  'tuya': {
+    'socket': TuyaDevice,
+    'switch': TuyaDevice,
+    'climate': Climate,
+    'fan': Fan,
+    'light': Light
+  },
+  'meross': {
+    'bulb': Bulb,
+    'thermostat': Thermostat
+  }
+};
 
 const api = new CloudTuya({
   userName: apiKeys.userName,
@@ -96,6 +120,15 @@ fn.slugifyValues = (obj) => (
 fn.slugifyEntries = (obj) => (
   Object.fromEntries(Object.entries(obj).map(([key, value]) => [fn.slugify(key), fn.slugify(value)]))
 );
+
+fn.asyncArrayIterator = async (array, iterator, callback) => {
+    const returnVal = array[iterator](callback);
+    if (Array.isArray(returnVal)) {
+      return await Promise.all(returnVal);
+    }
+
+    return returnVal;
+};
 
 fn.waitUntil = async (condition, callback) => {
   let checkCondition;
@@ -217,10 +250,10 @@ fn.getAliasIds = (nickname, parentPath = '') => {
 
   parentPath += `.${nickname}`;
   let subDeviceInfo = deviceConfig[fn.slugify(nickname)] || {};
-  return fn.getDeviceIds(subDeviceInfo, parentPath) || [];
+  return fn.getDeviceIdInfo(subDeviceInfo, parentPath) || [];
 };
 
-fn.getDeviceIds = (deviceInfo, parentPath = '') => {
+fn.getDeviceIdInfo = (deviceInfo, parentPath = '') => {
   if (_.isPlainObject(deviceInfo)) {
     if (deviceInfo.ids) {
       if (Array.isArray(deviceInfo.ids)) {
@@ -250,208 +283,290 @@ fn.getDeviceIds = (deviceInfo, parentPath = '') => {
   return [];
 };
 
-fn.isOn = (deviceData) => {
-  let isOn = false;
-  try {
-    isOn = await deviceData.Device.isOn();
-  } catch (error) {
-    try {
-      isOn = (await api.state({
-        devId: deviceData.Device.id,
-      }))[deviceData.Device.id];
-    } catch (error) {
-      isOn = _.get(deviceData, 'data.state') || false;
-    }
-  }
+fn.isOn = async (deviceData) => {
+  return await deviceData.device.isOn();
+  // let isOn = false;
+  // try {
+  //   isOn = await deviceData.device.isOn();
+  // } catch (error) {
+  //   try {
+  //     isOn = (await api.state({
+  //       devId: deviceData.device.id,
+  //     }))[deviceData.device.id];
+  //   } catch (error) {
+  //     isOn = _.get(deviceData, 'data.state') || false;
+  //   }
+  // }
 };
 
-fn.performDeviceAction = async (devices, deviceData, action, value, fallback) => {
-  if (deviceData.Device) {
+fn.performDeviceAction = async (devices, deviceData, fallback) => {
+  const device = deviceData.device;
+  const successes = [];
+  const errors = [];
+  let totalActions = 0;
+  if (device) {
     if (!_.get(deviceData, 'data.online')) {
       return {
         success: false,
-        status: 400,
-        error: 'DEVICE_OFFLINE',
-        message: `Device ${deviceData.nickname} is offline`
+        successes: [],
+        errors: [{
+          success: false,
+          status: 400,
+          error: 'DEVICE_OFFLINE',
+          message: `Device ${deviceData.nickname} is offline`
+        }]
       };
     }
 
-    switch (action) {
-      case 'off': {
-        deviceData.Device.turnOff();
-        break;
+    const actionCallback = (response) => {
+      const responseSuccess = _.get(response, 'header.code');
+      if (responseSuccess === undefined) {
+        if (_.isPlainObject(response)) {
+          (response.success ? successes : errors).push(response);
+        } else {
+          errors.push(response);
+        }
+      } else if (responseSuccess) {
+        successes.push({
+          success: true,
+          device: deviceData
+        });
+      } else {
+        errors.push({
+          success: false,
+          status: 500,
+          error: 'ACTION_UNSUCCESSFUL',
+          message: `Action ${action} was not performed on ${deviceData.nickname}`
+        });
+      }
+    };
+
+    const actionValues = Object.entries(deviceData.actions);
+    totalActions = actionValues.flatMap(([action, value]) => {
+      if (action === 'preset') {
+        let preset = fn.slugifyKeys(deviceData.presets)[fn.slugify(value)];
+        if (preset) {
+          if (typeof preset === 'string') {
+            return [preset];
+          }
+
+          return Object.keys(preset);
+        }
+
+        return [];
       }
 
-      case 'on': {
-        deviceData.Device.turnOn();
-        break;
-      }
+      return action;
+    }).length;
 
-      case 'toggle': {
-        const isOn = fn.isOn(deviceData);
+    await fn.asyncArrayIterator(actionValues, 'forEach', async ([action, value]) => {
+      switch (action) {
+        case 'off': {
+          device.turnOff().then(actionCallback);
+          break;
+        }
 
-        if (fallback) {
-          for (let device of devices) {
-            if (device.id === deviceData.Device.id) {
-              device.data.state = !isOn;
+        case 'on': {
+          device.turnOn().then(actionCallback);
+          break;
+        }
+
+        case 'toggle': {
+          fn.isOn(deviceData).then((isOn) => {
+            if (fallback) {
+              for (let device of devices) {
+                if (device.id === device.id) {
+                  device.data.state = !isOn;
+                }
+              }
+            }
+
+            if (isOn) {
+              device.turnOff().then(actionCallback);;
+            } else {
+              device.turnOn().then(actionCallback);;
+            }
+          });
+
+          break;
+        }
+
+        case 'brightness': {
+          if (device.supportsFeature('brightness')) {
+            device.setBrightness(value).then(actionCallback);;
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${deviceData.nickname} does not support action ${action}`
+            });
+          }
+
+          break;
+        }
+
+        case 'luminance': {
+          if (device.supportsFeature('brightness')) {
+            device.setBrightness(value).then(actionCallback);;
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${deviceData.nickname} does not support action ${action}`
+            });
+          }
+
+          break;
+        }
+
+        case 'color': {
+          if (device.supportsFeature('color')) {
+            device.setColor(colors[value] || value).then(actionCallback);;
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${deviceData.nickname} does not support action ${action}`
+            });
+          }
+
+          break;
+        }
+
+        case 'temperature': {
+          if (device.supportsFeature('temperature')) {
+            if (device instanceof Light || device instanceof Bulb) {
+              device.setColorTemperature(value).then(actionCallback);;
+            } else if (device instanceof Climate || device instanceof Thermostat) {
+              device.setTemperature(value).then(actionCallback);;
+            }
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${deviceData.nickname} does not support action ${action}`
+            });
+          }
+
+          break;
+        }
+
+        case 'mode': {
+          if (device.supportsFeature('mode')) {
+            if (device instanceof Thermostat) {
+              device.setOperationMode(value).then(actionCallback);;
             }
           }
+
+          break;
         }
 
-        if (isOn) {
-          deviceData.Device.turnOff();
-        } else {
-          deviceData.Device.turnOn();
-        }
+        case 'preset': {
+          deviceData.presets = fn.slugifyKeys(deviceData.presets);
+          const presetName = fn.slugify(value);
+          if (!presetName) {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'PRESET_REQUIRED',
+              message: 'Preset value is required'
+            });
 
-        break;
-      }
+            return;
+          }
 
-      case 'preset': {
-        deviceData.presets = fn.slugifyKeys(deviceData.presets);
-        const presetName = fn.slugify(value);
-        if (!presetName) {
-          return {
-            success: false,
-            status: 400,
-            error: 'PRESET_REQUIRED',
-            message: 'Preset value is required'
+          if (!deviceData.presets || !deviceData.presets[presetName]) {
+            console.warn(`Preset not found: ${presetName} for device ${deviceData.nickname}`);
+            errors.push({
+              success: false,
+              status: 404,
+              error: 'PRESET_NOT_FOUND',
+              message: `Cannot find preset ${presetName} for device ${deviceData.nickname}`
+            });
+
+            return;
+          }
+
+          let preset = deviceData.presets[presetName];
+
+          if (typeof preset === 'string') {
+            preset = {
+              [preset]: true
+            };
+          }
+
+          const presetDeviceData = {
+            ...deviceData,
+            actions: preset
           };
+
+        	fn.performDeviceAction(devices, presetDeviceData, fallback).then((response) => {
+            successes.push(...response.successes);
+            errors.push(...response.errors);
+          });
+
+          break;
         }
 
-        if (!deviceData.presets || !deviceData.presets[presetName]) {
-          console.warn(`Preset not found: ${presetName} for device ${deviceData.nickname}`);
-          return {
+        default: {
+          console.warn(`Action not found: ${action}`);
+          errors.push({
             success: false,
             status: 404,
-            error: 'PRESET_NOT_FOUND',
-            message: `Cannot find preset ${presetName} for device ${deviceData.nickname}`
-          };
+            error: 'ACTION_NOT_FOUND',
+            message: `Cannot find action ${action}`
+          });
+
+          return;
         }
-
-        let preset = deviceData.presets[presetName];
-
-        if (typeof preset === 'string') {
-          preset = [{
-            action: preset,
-            value: null
-          }];
-        } else if (_.isPlainObject(preset)) {
-          preset = Object.entries(preset).map(([action, value]) => ({
-            action,
-            value
-          }));
-        }
-
-        return await Promise.all(preset.map(async (presetAction) => {
-        	return await fn.performDeviceAction(devices, deviceData, presetAction.action, presetAction.value, fallback);
-        }));
-
-        break;
       }
-
-      default: {
-        console.warn(`Action not found: ${action}`);
-        return {
-          success: false,
-          status: 404,
-          error: 'ACTION_NOT_FOUND',
-          message: `Cannot find action ${action}`
-        };
-      }
-    }
+    });
   } else {
-    console.error(`Device not declared - nickname: ${deviceData.nickname}, id: ${deviceData.Device.id}`);
-    return {
+    console.error(`Device not declared - nickname: ${deviceData.nickname}, id: ${deviceData.device.id}`);
+    errors.push({
       success: false,
       status: 500,
       error: 'DEVICE_NOT_DEFINED',
       message: `The device was not created properly`
-    };
+    });
   }
 
-  return { success: true, device: deviceData };
+  return fn.waitUntil(() => ((successes.length + errors.length) >= totalActions), () => ({ success: successes.length > 0, successes, errors }));
 };
 
-fn.merossRequest = async (deviceId, devicePresets, action, queryParams) => {
-  let queryParamsCopy = _.cloneDeep(queryParams);
-  if (action === 'preset') {
-    devicePresets = fn.slugifyKeys(devicePresets);
-    const presetName = fn.slugify(queryParamsCopy.value);
-    if (!presetName) {
-      return {
-        success: false,
-        status: 400,
-        error: 'PRESET_REQUIRED',
-        message: 'Preset value is required'
-      };
-    }
+fn.getTuyaDevices = async () => await api.find();
 
-    if (!devicePresets || !devicePresets[presetName]) {
-      console.warn(`Preset not found: ${presetName} for device ${deviceNickname}`);
-      return {
-        success: false,
-        status: 404,
-        error: 'PRESET_NOT_FOUND',
-        message: `Cannot find preset ${presetName} for device ${deviceNickname}`
-      };
-    }
-
-    let preset = devicePresets[presetName];
-
-    if (typeof preset === 'string') {
-      preset = [{
-        action: preset,
-        value: null
-      }];
-    } else if (_.isPlainObject(preset)) {
-      preset = Object.entries(preset).map(([action, value]) => ({
-        action,
-        value
-      }));
-    }
-
-    return await Promise.all(preset.map(async (presetAction) => {
-    	return await fn.merossRequest(deviceId, devicePresets, presetAction.action, {
-        ...queryParamsCopy,
-        value: presetAction.value
-      });
-    }));
-  }
-
-  if (action === 'color') {
-    queryParamsCopy = {
-      ...queryParamsCopy,
-      value: typeof queryParamsCopy.value === 'string' ? queryParamsCopy.value.replace(/^#/, '') : queryParamsCopy.value
-    }
-  }
-
-  const queryString = Object.entries(queryParamsCopy).map(([key, value]) => `${encodeURI(key)}=${encodeURI(value)}`).join('&');
-  return fetch(`http://${merossURL}:${merossPort}/device/${deviceId}/${action}?${queryString}`, {
-    method: 'POST',
+fn.getMerossDevices = async () => {
+  const response = await (await fetch(`http://${merossURL}:${merossPort}/devices`, {
+    method: 'GET',
     headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json'
+      Accept: 'application/json'
     }
-  }).then((response) => response.text().then((text) => {
-    try {
-      return JSON.parse(text);
-    } catch (error) {
-      return text;
-    }
-  }));
+  })).text();
+
+  try {
+    return JSON.parse(response);
+  } catch (error) {
+    return [response];
+  }
 };
+
+fn.getDevices = async () => [...(await fn.getTuyaDevices() || []), ...(await fn.getMerossDevices() || [])];
 
 deviceConfig = fn.slugifyKeys(deviceConfig);
 scenes = fn.slugifyKeys(scenes);
 
-const performDeviceActions = async (deviceNicknamesList, action, value, queryParams = null) => {
+const performDeviceActions = async (deviceActions) => {
   try {
     fallback = false;
-    let devices = await api.find();
+    let devices = await fn.getDevices();
     if (devices) {
       fs.writeFileSync('./devices.json', JSON.stringify(devices));
-    } else if (['toggle'].includes(action)) {
+    } else if (actionList.includes('toggle')) {
       fallback = true;
       devices = require('./devices.json');
     }
@@ -462,11 +577,12 @@ const performDeviceActions = async (deviceNicknamesList, action, value, queryPar
     let totalDevices = 0;
     let deviceCounter = 0;
 
-    deviceNicknamesList.forEach((deviceNickname) => {
+    await fn.asyncArrayIterator(deviceActions, 'forEach', async (deviceAction) => {
+      const deviceNickname = deviceAction.nickname;
       const deviceInfo = deviceConfig[fn.slugify(deviceNickname)] || {};
       let deviceIdsInfo = [];
       try {
-        deviceIdsInfo = fn.getDeviceIds(deviceInfo, deviceNickname);
+        deviceIdsInfo = fn.getDeviceIdInfo(deviceInfo, deviceNickname);
         deviceIdsInfo = _.uniqBy(deviceIdsInfo, (deviceIdInfo) => `${deviceIdInfo.platform} - ${deviceIdInfo.id}`);
       } catch (error) {
         if (error.name = 'CIRCULAR_ALIAS') {
@@ -496,75 +612,97 @@ const performDeviceActions = async (deviceNicknamesList, action, value, queryPar
 
       totalDevices += deviceIdsInfo.length;
 
-      const performActionCallback = (response) => {
-        if (!Array.isArray(response)) {
-          response = [response];
-        }
-        response.forEach((responseObj) => {
-          if (responseObj.success) {
-            successes.push(responseObj);
-          } else {
-            errors.push(responseObj);
-          }
-        });
-
-        deviceCounter += 1;
-      };
-
-      deviceIdsInfo.forEach((deviceIdInfo) => {
+      await fn.asyncArrayIterator(deviceIdsInfo, 'forEach', async (deviceIdInfo) => {
         const platform = deviceIdInfo.platform;
         const deviceId = deviceIdInfo.id;
-        const Device = platform === 'tuya' ? new TuyaDevice({ api, deviceId }) : {};
+        let constructorParams = {};
+        if (platform === 'tuya') {
+          constructorParams = { api, deviceId };
+        } else if (platform === 'meross') {
+          constructorParams = { url: merossFullURL, deviceId };
+        }
+
+        const DeviceType = _.get(deviceTypeClassMap, [platform, deviceIdInfo.type], null);
+
+        if (!DeviceType) {
+          errors.push({
+            success: false,
+            status: 500,
+            error: 'DEVICE_TYPE_NOT_DEFINED',
+            message: `Cannot match device type ${deviceIdsInfo.type} to a class`
+          });
+
+          deviceCounter += 1;
+          return;
+        }
+
+        const device = new DeviceType(constructorParams);
         let deviceData = {
           nickname: deviceNickname,
           presets: deviceIdInfo.presets,
           info: deviceIdInfo,
-          Device
+          actions: {},
+          device,
+          ...(devices.find((device) => device.id === deviceId) || {})
         };
 
-        if (deviceIdInfo.timeBased && deviceIdInfo.timeBased[action]) {
-          if (action === 'toggle') {
-            if (platform === 'tuya') {
-              const deviceData = {
-                ...(devices.find((device) => device.id === deviceId) || {}),
-                ...deviceData
-              };
+        if (deviceIdInfo.timeBased) {
+          deviceAction.actions = Object.fromEntries(
+            await (fn.asyncArrayIterator(Object.entries(deviceAction.actions), 'map', async ([action, value], index) => {
+            if ((deviceIdInfo.timeBased[action] || (action === 'toggle' && deviceIdInfo.timeBased.on))) {
+              let timeAction = action;
+              if (action === 'toggle') {
+                const isOn = await fn.isOn(deviceData);
+                if (!isOn) {
+                  timeAction = 'on';
+                }
+              }
 
-              if (deviceData) {
-                const isOn = fn.isOn(deviceData);
+              const timeBasedSchedules = deviceIdInfo.timeBased[timeAction];
+              if (timeBasedSchedules) {
+                let scheduledPresetConfig = Object.entries(timeBasedSchedules).find(([times, presetName]) => {
+                  const timesSplit = times.split('->');
+                  const startTime = timesSplit[0];
+                  const endTime = timesSplit[1];
+                  return fn.isInTimeRange(startTime, endTime)
+                });
+
+                scheduledPresetConfig = {
+                  times: scheduledPresetConfig[0],
+                  presetName: scheduledPresetConfig[1]
+                };
+
+                if (scheduledPresetConfig) {
+                  const scheduledPreset = fn.slugifyKeys(deviceIdInfo.presets)[fn.slugify(scheduledPresetConfig.presetName)];
+                  if (scheduledPreset) {
+                    action = 'preset';
+                    value = scheduledPresetConfig.presetName;
+                  }
+                }
               }
             }
+            return [action, value];
+          })));
+        }
+
+        deviceData.actions = deviceAction.actions;
+        fn.performDeviceAction(devices, deviceData, fallback).then((response) => {
+          if (!Array.isArray(response)) {
+            response = [response];
           }
 
-          const timeBasedSchedules = deviceIdInfo.timeBased[action];
-          const scheduledPresetConfig = Object.entries(timeBasedSchedules).find(([times, presetName]) => {
-            const timesSplit = times.split('->');
-            const startTime = timesSplit[0];
-            const endTime = timesSplit[1];
-            return fn.isInTimeRange(startTime, endTime)
-          });
-
-          if (scheduledPresetConfig) {
-            const scheduledPreset = fn.slugifyKeys(deviceIdInfo.presets)[fn.slugify(scheduledPresetConfig[1])];
-            if (scheduledPreset) {
-              action = 'preset';
-              value = scheduledPresetConfig[1];
-              queryParams.value = value;
+          response.forEach((responseObj) => {
+            if (responseObj.successes) {
+              successes.push(...responseObj.successes);
+            } else if (responseObj.errors) {
+              errors.push(...responseObj.errors);
             }
-          }
-        }
-
-        // todo figure out how to conditionally toggle a preset (if off)
-
-        if (platform === 'tuya') {
-          fn.performDeviceAction(devices, deviceData, action, value, fallback).then(performActionCallback).catch((error) => {
-            console.error(error);
           });
-        } else if (platform === 'meross') {
-          fn.merossRequest(deviceId, deviceIdInfo.presets, action, queryParams).then(performActionCallback).catch((error) => {
-            console.error(error);
-          });
-        }
+
+          deviceCounter += 1;
+        }).catch((error) => {
+          console.error(error);
+        });
       });
     });
 
@@ -622,12 +760,10 @@ const performDeviceActions = async (deviceNicknamesList, action, value, queryPar
   }
 };
 
-app.post('/device/:deviceNicknameList/:action', async (req, res) => {
-  const deviceNicknamesList = req.params.deviceNicknameList.split(',');
-  const { action } = req.params;
-  const value = req.query.value;
+app.post('/device/action', async (req, res) => {
+  const deviceActions = req.body;
 
-  const response = await performDeviceActions(deviceNicknamesList, action, value, req.query);
+  const response = await performDeviceActions(deviceActions);
 
   return res.status(response.status).json(response);
 });
@@ -643,26 +779,19 @@ app.post('/scene/:sceneName', async (req, res) => {
     });
   }
 
-  const devicePresets = _.groupBy(Object.keys(scenes[sceneName]), (deviceNickname) => {
-    return scenes[sceneName][deviceNickname];
-  });
-
-  const numDevicePresets = Object.keys(devicePresets).length;
-
-  const responses = [];
-
-  Object.entries(devicePresets).forEach(([presetName, deviceNicknamesList]) => {
-    const queryParams = {
-      ...req.query,
-      value: presetName
+  const deviceActions = Object.entries(scenes[sceneName]).map(([deviceNickname, presetName]) => {
+    const deviceInfo = deviceConfig[fn.slugify(deviceNickname)] || {};
+    const deviceIdsInfo = fn.getDeviceIdInfo(deviceInfo, deviceNickname);
+    let actions = _.get(deviceIdsInfo, [0, 'presets', presetName], { [presetName]: true });
+    actions = typeof actions === 'string' ? { [actions]: true } : actions;
+    return {
+      nickname: deviceNickname,
+      actions
     };
-
-    performDeviceActions(deviceNicknamesList, 'preset', presetName, queryParams).then((response) => {
-      responses.push(response);
-    });
   });
 
-  return fn.waitUntil(() => (responses.length === numDevicePresets), () => (res.json(responses)));
+  const response = await performDeviceActions(deviceActions);
+  return response && response.status ? res.status(response.status).json(response) : res.json(response);
 });
 
 app.listen(port, () => console.log(`Smart Home REST Server started on port: ${port}`));

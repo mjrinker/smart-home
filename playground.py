@@ -332,9 +332,12 @@ if __name__ == '__main__':
             'Master Bath 2'
         ]
 
-        bulbs = get_devices(manager, 'bulb')
-        for bulb in bulbs:
-            print(bulb, bulb.uuid)
+        # bulbs = get_devices(manager, 'bulb')
+        # for bulb in bulbs:
+        #     print(bulb.name, bulb.uuid)
+
+        # for device in manager.get_supported_devices():
+        #     print(device.name)
 
         # bulb = get_device(manager, 'Dining Chandelier 1')
         # bulb[0].set_light_color(rgb=(255, 0, 255))

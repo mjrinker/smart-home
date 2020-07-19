@@ -106,11 +106,11 @@ def initiate_manager(email, password):
     return MerossManager.from_email_and_password(meross_email=email, meross_password=password)
 
 
-def get_device(device_uuid):
+def get_device_by_uuid(uuid):
     if manager is None:
         return None
     else:
-        return manager.get_device_by_uuid(device_uuid)
+        return manager.get_device_by_uuid(uuid)
 
 
 def ACTION_NOT_SUPPORTED_ERROR(name, action):
@@ -123,7 +123,7 @@ def ACTION_NOT_SUPPORTED_ERROR(name, action):
 
 
 def VALUE_REQUIRED_ERROR(name, action):
-    jsonify({
+    return jsonify({
         'success': False,
         'status': 400,
         'error': 'VALUE_REQUIRED',
@@ -176,9 +176,45 @@ def DEVICE_OFFLINE_ERROR(uuid):
     }), 503
 
 
+@api.route('/devices', methods=['GET'])
+def get_devices():
+    devices = []
+    for device in manager.get_supported_devices():
+        devices.append({
+            'data': {
+                'online': device.online,
+                'state': device.get_status()
+            },
+            'name': device.name,
+            'icon': None,
+            'id': device.uuid,
+            'dev_type': device.type,
+            'ha_type': device.type
+        })
+    return jsonify(devices)
+
+
+@api.route('/device/<uuid>', methods=['GET'])
+def get_device(uuid):
+    device = get_device_by_uuid(uuid)
+    if device is None:
+        return DEVICE_NOT_FOUND_ERROR(uuid)
+    return jsonify({
+        'data': {
+            'online': device.online,
+            'state': device.get_status()
+        },
+        'name': device.name,
+        'icon': None,
+        'id': device.uuid,
+        'dev_type': device.type,
+        'ha_type': device.type
+    })
+
+
 @api.route('/device/<uuid>/is_on', methods=['GET'])
 def is_on(uuid):
-    device = get_device(uuid)
+    device = get_device_by_uuid(uuid)
     if device is None:
         return jsonify({
             'success': False,
@@ -186,7 +222,7 @@ def is_on(uuid):
             'error': 'DEVICE_NOT_FOUND',
             'message': 'Cannot find device'
         }), 404
-    return json.dumps({
+    return jsonify({
         'success': True,
         'is_on': device.get_status()['onoff']
     })
@@ -194,7 +230,7 @@ def is_on(uuid):
 
 @api.route('/device/<uuid>/skills', methods=['GET'])
 def get_skills(uuid):
-    device = get_device(uuid)
+    device = get_device_by_uuid(uuid)
     if device is None:
         return jsonify({
             'success': False,
@@ -202,7 +238,7 @@ def get_skills(uuid):
             'error': 'DEVICE_NOT_FOUND',
             'message': 'Cannot find device'
         }), 404
-    return json.dumps({
+    return jsonify({
         'success': True,
         'skills': {
             'all': ALL in device.get_abilities(),
@@ -248,14 +284,15 @@ def get_skills(uuid):
             'color': dec_to_hex(device.get_light_color()['rgb']) if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES)
                                                                     and device.supports_mode(MODE_RGB)
             else False,
-            'spray': SPRAY in device.get_abilities()
+            'spray': SPRAY in device.get_abilities(),
+            'mode': isinstance(device, ValveSubDevice)
         }
     })
 
 
 @api.route('/device/<uuid>/<action>', methods=['POST'])
 def perform_action(uuid, action):
-    device = get_device(uuid)
+    device = get_device_by_uuid(uuid)
     status = False
     params = parse.parse_qs(request.query_string.decode('utf-8'))
     value = get_path(params, 'value')
@@ -349,20 +386,20 @@ def perform_action(uuid, action):
             'luminance']
         light_state['rgb'] = value if action == 'color' else dec_to_hex(light_state['rgb'])
         light_state['temperature'] = int(value) if action == 'temperature' else light_state['temperature']
-    return json.dumps({
+    return jsonify({
         'success': True,
         'device': {
             'nickname': device.name,
             'data': {
-                'online': True,
+                'online': device.online,
                 'state': device.get_status() or status,
                 'light_state': light_state
             },
             'name': device.name,
             'icon': None,
             'id': uuid,
-            'dev_type': 'bulb',
-            'ha_type': 'bulb'
+            'dev_type': device.type,
+            'ha_type': device.type
         }
     })
 

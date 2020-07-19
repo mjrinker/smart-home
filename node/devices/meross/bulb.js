@@ -13,7 +13,7 @@ class Bulb extends MerossDevice {
       ...(features.brightness ? [features.brightness] : []),
       ...(features.color ? [features.color] : []),
       ...(features.temperature ? [features.temperature] : [])
-    ].join(',');
+    ].join(',').replace(/#([0-9a-f]{6})/gi, '$1');
 
     return fetch(`${this._url}/device/${this._deviceId}/${action}?value=${value}`, {
       method: 'POST',
@@ -39,7 +39,7 @@ class Bulb extends MerossDevice {
   }
 
   async setBrightness(value) {
-    this.setLightValues({ brightness: value });
+    return this.setLightValues({ brightness: value });
   }
 
   async supportsColor() {
@@ -51,7 +51,7 @@ class Bulb extends MerossDevice {
   }
 
   async setColor(value) {
-    this.setLightValues({ color: value });
+    return this.setLightValues({ color: value });
   }
 
   async supportsColorTemperature() {
@@ -63,7 +63,7 @@ class Bulb extends MerossDevice {
   }
 
   async setColorTemperature(value) {
-    this.setLightValues({ temperature: value });
+    return this.setLightValues({ temperature: value });
   }
 }
 module.exports = Bulb;
