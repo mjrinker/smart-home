@@ -45,6 +45,22 @@ class MerossDevice {
     }));
   }
 
+  async toggle() {
+    return fetch(`${this._url}/device/${this._deviceId}/toggle`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      }
+    }).then((response) => response.text().then((text) => {
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        return text;
+      }
+    }));
+  }
+
   async isOn() {
     return fetch(`${this._url}/device/${this._deviceId}/is_on`, {
       method: 'GET',

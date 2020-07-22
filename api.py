@@ -1,37 +1,100 @@
+import asyncio
+from aiohttp import web
 import dotenv
-from flask import Flask, json, jsonify, request
 import os
 import shutil
-from urllib import parse
+import signal
 
-from meross_iot.cloud.device import AbstractMerossDevice
-from meross_iot.cloud.devices.door_openers import GenericGarageDoorOpener
-from meross_iot.cloud.devices.hubs import GenericHub
-from meross_iot.cloud.devices.humidifier import GenericHumidifier
-from meross_iot.cloud.devices.light_bulbs import GenericBulb
-from meross_iot.cloud.devices.power_plugs import GenericPlug
-from meross_iot.cloud.devices.subdevices.thermostats import ValveSubDevice, ThermostatV3Mode, ThermostatMode
-from meross_iot.cloud.devices.subdevices.sensors import SensorSubDevice
+from meross_iot.http_api import MerossHttpClient
 from meross_iot.manager import MerossManager
-from meross_iot.meross_event import MerossEventType
-from meross_iot.cloud.abilities import *
-from meross_iot.cloud.devices.light_bulbs import MODE_RGB, MODE_LUMINANCE, MODE_TEMPERATURE
+from meross_iot.controller.device import BaseDevice, HubDevice, GenericSubDevice
+from meross_iot.controller.mixins.garage import GarageOpenerMixin
+from meross_iot.controller.mixins.spray import SprayMixin
+from meross_iot.controller.mixins.light import LightMixin
+from meross_iot.controller.mixins.toggle import ToggleXMixin, ToggleMixin
+from meross_iot.controller.subdevice import Mts100v3Valve, Ms100Sensor
+from meross_iot.model.enums import OnlineStatus, ThermostatV3Mode
 
 if not os.path.isfile('.env'):
     shutil.copyfile('.env.sample', '.env')
 
 dotenv.load_dotenv()
+ENVIRONMENT = os.getenv('ENVIRONMENT')
 EMAIL = os.getenv('MEROSS_EMAIL')
 PASSWORD = os.getenv('MEROSS_PASSWORD')
 
+DEVICE_TYPES = (BaseDevice, LightMixin, ToggleXMixin, ToggleMixin, GarageOpenerMixin, HubDevice,
+                SprayMixin, GenericSubDevice, Ms100Sensor, Mts100v3Valve)
+ON_OFF_DEVICE_TYPES = (LightMixin, ToggleXMixin, ToggleMixin, Mts100v3Valve)
+LIGHT_CONTROL_DEVICE_TYPES = LightMixin
+
+api = web.Application()
+
+http_api_client = None
 manager = None
 
-DEVICE_TYPES = (AbstractMerossDevice, GenericBulb, GenericPlug, ValveSubDevice, GenericGarageDoorOpener, GenericHub,
-                GenericHumidifier, SensorSubDevice)
-ON_OFF_DEVICE_TYPES = (GenericBulb, GenericPlug, ValveSubDevice)
-LIGHT_CONTROL_DEVICE_TYPES = (GenericBulb, GenericHumidifier)
 
-api = Flask(__name__)
+def ACTION_NOT_SUPPORTED_ERROR(name, action):
+    raise web.HTTPBadRequest(body={
+        'success': False,
+        'status': 400,
+        'error': 'ACTION_NOT_SUPPORTED',
+        'message': f'Device {name} does not support action {action}'
+    }, content_type='application/json')
+
+
+def VALUE_REQUIRED_ERROR(name, action):
+    raise web.HTTPBadRequest(body={
+        'success': False,
+        'status': 400,
+        'error': 'VALUE_REQUIRED',
+        'message': f'A value must be set to set the {action} of device {name}'
+    }, content_type='application/json')
+
+
+def INVALID_VALUE_ERROR(name, action, value, expected_type):
+    raise web.HTTPBadRequest(body={
+        'success': False,
+        'status': 400,
+        'error': 'INVALID_VALUE',
+        'message': f'Invalid value for {action} of device {name}; Expected: <{expected_type}>, Got: {value}'
+    }, content_type='application/json')
+
+
+def DEVICE_NOT_FOUND_ERROR(uuid):
+    raise web.HTTPBadRequest(body={
+        'success': False,
+        'status': 404,
+        'error': 'DEVICE_NOT_FOUND',
+        'message': f'Cannot find device {uuid}'
+    }, content_type='application/json')
+
+
+def ACTION_NOT_FOUND_ERROR(action):
+    raise web.HTTPBadRequest(body={
+        'success': False,
+        'status': 404,
+        'error': 'ACTION_NOT_FOUND',
+        'message': f'Cannot find action {action}'
+    }, content_type='application/json')
+
+
+def SETTING_NOT_FOUND_ERROR(name, action, value):
+    raise web.HTTPBadRequest(body={
+        'success': False,
+        'status': 404,
+        'error': 'SETTING_NOT_FOUND',
+        'message': f'Cannot find mode {value} for {action} of device {name}'
+    }, content_type='application/json')
+
+
+def DEVICE_OFFLINE_ERROR(uuid):
+    raise web.HTTPBadRequest(body={
+        'success': False,
+        'status': 503,
+        'error': 'DEVICE_OFFLINE',
+        'message': f'Device {uuid} is offline'
+    }, content_type='application/json')
 
 
 def get_path(obj, path):
@@ -48,14 +111,14 @@ def get_path(obj, path):
     return value
 
 
-def hex_color_to_rgb(hex):
-    return tuple(int(hex[i:i + 2], 16) for i in (0, 2, 4))
+def hex_color_to_rgb(hexd):
+    return tuple(int(hexd[i:i + 2], 16) for i in (0, 2, 4))
 
 
 def dec_to_hex(dec):
     if isinstance(dec, str):
         return dec
-    return hex(dec)[2:]
+    return hex((dec[0] << 16) + (dec[1] << 8) + dec[2])[2:]
 
 
 def is_valid_decimal(s):
@@ -67,142 +130,74 @@ def is_valid_decimal(s):
         return True
 
 
-def event_handler(eventobj):
-    if eventobj.event_type == MerossEventType.DEVICE_ONLINE_STATUS:
-        print('Device online status changed: %s went %s' % (eventobj.device.name, eventobj.status))
-        pass
-
-    elif eventobj.event_type == MerossEventType.DEVICE_SWITCH_STATUS:
-        print('Switch state changed: Device %s (channel %d) went %s' % (eventobj.device.name, eventobj.channel_id,
-                                                                        eventobj.switch_state))
-    elif eventobj.event_type == MerossEventType.CLIENT_CONNECTION:
-        print('MQTT connection state changed: client went %s' % eventobj.status)
-
-        # TODO: Give example of reconnection?
-
-    elif eventobj.event_type == MerossEventType.GARAGE_DOOR_STATUS:
-        print('Garage door is now %s' % eventobj.door_state)
-
-    elif eventobj.event_type == MerossEventType.THERMOSTAT_MODE_CHANGE:
-        print('Thermostat %s has changed mode to %s' % (eventobj.device.name, eventobj.mode))
-
-    elif eventobj.event_type == MerossEventType.THERMOSTAT_TEMPERATURE_CHANGE:
-        print('Thermostat %s has revealed a temperature change: %s' % (eventobj.device.name, eventobj.temperature))
-
-    elif eventobj.event_type == MerossEventType.SENSOR_TEMPERATURE_CHANGE:
-        print('Sensor %s has revealed a temp/humidity change: %s %s' % (
-            eventobj.device.name, eventobj.temperature, eventobj.humidity))
-
-    elif eventobj.event_type == MerossEventType.SENSOR_TEMPERATURE_ALERT:
-        print('Sensor %s has revealed a temperature alert: %s' % (eventobj.device.name, eventobj.alert))
-
-    else:
-        print('Unknown event!')
-        for key, value in vars(eventobj).items():
-            print('\t%s %s' % (key, value))
+def shutdown_api(arg):
+    print('Shutting down API server...')
+    signal.raise_signal(signal.SIGINT)
 
 
-def initiate_manager(email, password):
-    return MerossManager.from_email_and_password(meross_email=email, meross_password=password)
+def initiate_manager():
+    global http_api_client
+    if isinstance(http_api_client, MerossHttpClient):
+        return MerossManager(http_client=http_api_client)
+
+
+def logout(sig, frame):
+    global manager
+    global http_api_client
+    print('Logging out of Meross...')
+    if isinstance(manager, MerossManager) and isinstance(http_api_client, MerossHttpClient):
+        manager.close()
+        asyncio.ensure_future(http_api_client.async_logout()).add_done_callback(shutdown_api)
 
 
 def get_device_by_uuid(uuid):
-    if manager is None:
-        return None
-    else:
-        return manager.get_device_by_uuid(uuid)
+    if isinstance(manager, MerossManager):
+        return manager.find_devices(device_uuids=[uuid])[0]
 
 
-def ACTION_NOT_SUPPORTED_ERROR(name, action):
-    return jsonify({
-        'success': False,
-        'status': 400,
-        'error': 'ACTION_NOT_SUPPORTED',
-        'message': f'Device {name} does not support action {action}'
-    }), 400
+def _is_on(device):
+    if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES):
+        return device.get_light_is_on()
+    if isinstance(device, ON_OFF_DEVICE_TYPES):
+        return device.is_on()
+    if isinstance(device, DEVICE_TYPES):
+        return device.online_status == OnlineStatus.ONLINE
+    return False
 
 
-def VALUE_REQUIRED_ERROR(name, action):
-    return jsonify({
-        'success': False,
-        'status': 400,
-        'error': 'VALUE_REQUIRED',
-        'message': f'A value must be set to set the {action} of device {name}'
-    }), 400
+async def quit_api(request):
+    if ENVIRONMENT == 'dev':
+        logout(signal.SIGQUIT, 0)
+        return web.json_response({'success': True})
 
 
-def INVALID_VALUE_ERROR(name, action, value, expected_type):
-    jsonify({
-        'success': False,
-        'status': 400,
-        'error': 'INVALID_VALUE',
-        'message': f'Invalid value for {action} of device {name}; Expected: <{expected_type}>, Got: {value}'
-    }), 400
-
-
-def DEVICE_NOT_FOUND_ERROR(uuid):
-    return jsonify({
-        'success': False,
-        'status': 404,
-        'error': 'DEVICE_NOT_FOUND',
-        'message': f'Cannot find device {uuid}'
-    }), 404
-
-
-def ACTION_NOT_FOUND_ERROR(action):
-    return jsonify({
-        'success': False,
-        'status': 404,
-        'error': 'ACTION_NOT_FOUND',
-        'message': f'Cannot find action {action}'
-    }), 404
-
-
-def SETTING_NOT_FOUND_ERROR(name, action, value):
-    return jsonify({
-        'success': False,
-        'status': 404,
-        'error': 'SETTING_NOT_FOUND',
-        'message': f'Cannot find mode {value} for {action} of device {name}'
-    }), 404
-
-
-def DEVICE_OFFLINE_ERROR(uuid):
-    return jsonify({
-        'success': False,
-        'status': 503,
-        'error': 'DEVICE_OFFLINE',
-        'message': f'Device {uuid} is offline'
-    }), 503
-
-
-@api.route('/devices', methods=['GET'])
-def get_devices():
+async def get_devices(request):
     devices = []
-    for device in manager.get_supported_devices():
-        devices.append({
-            'data': {
-                'online': device.online,
-                'state': device.get_status()
-            },
-            'name': device.name,
-            'icon': None,
-            'id': device.uuid,
-            'dev_type': device.type,
-            'ha_type': device.type
-        })
-    return jsonify(devices)
+    if isinstance(manager, MerossManager):
+        for device in manager.find_devices():
+            devices.append({
+                'data': {
+                    'online': device.online_status == OnlineStatus.ONLINE,
+                    'state': _is_on(device)
+                },
+                'name': device.name,
+                'icon': None,
+                'id': device.uuid,
+                'dev_type': device.type,
+                'ha_type': device.type
+            })
+    return web.json_response(devices)
 
 
-@api.route('/device/<uuid>', methods=['GET'])
-def get_device(uuid):
+async def get_device(request):
+    uuid = request.match_info['uuid']
     device = get_device_by_uuid(uuid)
     if device is None:
         return DEVICE_NOT_FOUND_ERROR(uuid)
-    return jsonify({
+    return web.json_response({
         'data': {
-            'online': device.online,
-            'state': device.get_status()
+            'online': device.online_status == OnlineStatus.ONLINE,
+            'state': _is_on(device)
         },
         'name': device.name,
         'icon': None,
@@ -212,190 +207,178 @@ def get_device(uuid):
     })
 
 
-@api.route('/device/<uuid>/is_on', methods=['GET'])
-def is_on(uuid):
+async def is_on(request):
+    uuid = request.match_info['uuid']
     device = get_device_by_uuid(uuid)
     if device is None:
-        return jsonify({
+        return web.json_response({
             'success': False,
             'status': 404,
             'error': 'DEVICE_NOT_FOUND',
             'message': 'Cannot find device'
         }), 404
-    return jsonify({
+    return web.json_response({
         'success': True,
-        'is_on': device.get_status()['onoff']
+        'is_on': _is_on(device)
     })
 
 
-@api.route('/device/<uuid>/skills', methods=['GET'])
-def get_skills(uuid):
+async def get_skills(request):
+    uuid = request.match_info['uuid']
     device = get_device_by_uuid(uuid)
     if device is None:
-        return jsonify({
+        return web.json_response({
             'success': False,
             'status': 404,
             'error': 'DEVICE_NOT_FOUND',
             'message': 'Cannot find device'
         }), 404
-    return jsonify({
+    return web.json_response({
         'success': True,
         'skills': {
-            'all': ALL in device.get_abilities(),
-            'ability': ABILITY in device.get_abilities(),
-            'skill': ABILITY in device.get_abilities(),
-            'report': REPORT in device.get_abilities(),
-            'online': ONLINE in device.get_abilities(),
-            'wifi_list': WIFI_LIST in device.get_abilities(),
-            'debug': DEBUG in device.get_abilities(),
-            'trace': TRACE in device.get_abilities(),
-            'bind': BIND in device.get_abilities(),
-            'unbind': UNBIND in device.get_abilities(),
-            'toggle': TOGGLE in device.get_abilities(),
-            'toggle_x': TOGGLEX in device.get_abilities(),
-            'trigger': TRIGGER in device.get_abilities(),
-            'trigger_x': TRIGGERX in device.get_abilities(),
-            'electricity': ELECTRICITY in device.get_abilities(),
-            'consumption_x': CONSUMPTIONX in device.get_abilities(),
-            'hub_toggle_x': HUB_TOGGLEX in device.get_abilities(),
-            'hub_online': HUB_ONLINE in device.get_abilities(),
-            'hub_mts100_temperature': HUB_MTS100_TEMPERATURE in device.get_abilities(),
-            'hub_mts100_mode': HUB_MTS100_MODE in device.get_abilities(),
-            'hub_mts100_all': HUB_MTS100_ALL in device.get_abilities(),
-            'hub_ms100_all': HUB_MS100_ALL in device.get_abilities(),
-            'hub_ms100_temp_hum': HUB_MS100_TEMPHUM in device.get_abilities(),
-            'hub_ms100_alert': HUB_MS100_ALERT in device.get_abilities(),
-            'hub_exception': HUB_EXCEPTION in device.get_abilities(),
-            'hub_battery': HUB_BATTERY in device.get_abilities(),
-            'garage_door_state': GARAGE_DOOR_STATE in device.get_abilities(),
-            'light': LIGHT in device.get_abilities(),
-            'luminance': device.get_light_color()['luminance'] if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES)
-                                                                  and device.supports_mode(MODE_LUMINANCE)
-            else False,
-            'brightness': device.get_light_color()['luminance'] if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES)
-                                                                   and device.supports_mode(MODE_LUMINANCE)
-            else False,
-            'temperature': device.get_light_color()['temperature'] if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES)
-                                                                      and device.supports_mode(MODE_TEMPERATURE)
-            else False,
-            'color_temp': device.get_light_color()['temperature'] if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES)
-                                                                     and device.supports_mode(MODE_TEMPERATURE)
-            else False,
-            'color': dec_to_hex(device.get_light_color()['rgb']) if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES)
-                                                                    and device.supports_mode(MODE_RGB)
-            else False,
-            'spray': SPRAY in device.get_abilities(),
-            'mode': isinstance(device, ValveSubDevice)
+            'online': isinstance(device, DEVICE_TYPES),
+            'offline': isinstance(device, DEVICE_TYPES),
+            'system_all': isinstance(device, DEVICE_TYPES),
+            'system_ability': isinstance(device, DEVICE_TYPES),
+            'system_online': isinstance(device, DEVICE_TYPES),
+            'system_report': isinstance(device, DEVICE_TYPES),
+            'system_debug': isinstance(device, DEVICE_TYPES),
+            'control_bind': isinstance(device, DEVICE_TYPES),
+            'control_unbind': isinstance(device, DEVICE_TYPES),
+            'control_trigger': isinstance(device, DEVICE_TYPES),
+            'control_trigger_x': isinstance(device, DEVICE_TYPES),
+            'config_wifi_list': isinstance(device, DEVICE_TYPES),
+            'config_trace': isinstance(device, DEVICE_TYPES),
+            'control_toggle': isinstance(device, DEVICE_TYPES),
+            'control_toggle_x': isinstance(device, DEVICE_TYPES),
+            'control_electricity': isinstance(device, DEVICE_TYPES),
+            'control_consumption_x': isinstance(device, DEVICE_TYPES),
+            'control_light': isinstance(device, DEVICE_TYPES),
+            'garage_door_state': isinstance(device, DEVICE_TYPES),
+            'control_spray': isinstance(device, DEVICE_TYPES),
+            'system_digest_hub': isinstance(device, DEVICE_TYPES),
+            'hub_exception': isinstance(device, DEVICE_TYPES),
+            'hub_battery': isinstance(device, DEVICE_TYPES),
+            'hub_toggle_x': isinstance(device, DEVICE_TYPES),
+            'hub_online': isinstance(device, DEVICE_TYPES),
+            'hub_sensor_all': isinstance(device, DEVICE_TYPES),
+            'hub_sensor_temphum': isinstance(device, DEVICE_TYPES),
+            'hub_sensor_alert': isinstance(device, DEVICE_TYPES),
+            'hub_mts100_all': isinstance(device, DEVICE_TYPES),
+            'hub_mts100_temperature': isinstance(device, DEVICE_TYPES),
+            'hub_mts100_mode': isinstance(device, DEVICE_TYPES),
+            'luminance': isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.get_supports_luminance(),
+            'brightness': isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.get_supports_luminance(),
+            'temperature': isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.get_supports_temperature(),
+            'color_temp': isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.get_supports_temperature(),
+            'rgb': isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.get_supports_rgb(),
+            'color': isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.get_supports_rgb(),
+            'spray': isinstance(device, SprayMixin),
+            'mode': isinstance(device, Mts100v3Valve)
         }
     })
 
 
-@api.route('/device/<uuid>/<action>', methods=['POST'])
-def perform_action(uuid, action):
+async def perform_action(request):
+    uuid = request.match_info['uuid']
+    action = request.match_info['action']
     device = get_device_by_uuid(uuid)
     status = False
-    params = parse.parse_qs(request.query_string.decode('utf-8'))
-    value = get_path(params, 'value')
+    value = request.rel_url.query.get('value')
     if isinstance(value, list):
         value = value[0]
     if device is None:
         return DEVICE_NOT_FOUND_ERROR(uuid)
-    if not device.online:
+    device_name = device.name if isinstance(device, DEVICE_TYPES) else ''
+    if not device.online_status == OnlineStatus.ONLINE:
         return DEVICE_OFFLINE_ERROR(uuid)
     if not isinstance(device, DEVICE_TYPES):
         return DEVICE_NOT_FOUND_ERROR(uuid)
     if action == 'off':
         if isinstance(device, ON_OFF_DEVICE_TYPES):
-            device.turn_off()
+            await device.async_turn_off()
         else:
-            return ACTION_NOT_SUPPORTED_ERROR(device.name, action)
+            return ACTION_NOT_SUPPORTED_ERROR(device_name, action)
     elif action == 'on':
         if isinstance(device, ON_OFF_DEVICE_TYPES):
-            device.turn_on()
+            await device.async_turn_on()
             status = True
         else:
-            return ACTION_NOT_SUPPORTED_ERROR(device.name, action)
+            return ACTION_NOT_SUPPORTED_ERROR(device_name, action)
     elif action == 'toggle':
         if isinstance(device, ON_OFF_DEVICE_TYPES):
-            if device.get_status()['onoff']:
-                device.turn_off()
-            else:
-                device.turn_on()
-                status = True
+            await device.async_toggle()
+            status = _is_on(device)
         else:
-            return ACTION_NOT_SUPPORTED_ERROR(device.name, action)
+            return ACTION_NOT_SUPPORTED_ERROR(device_name, action)
     elif action == 'brightness' or action == 'luminance':
-        if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.supports_light_control() and device.supports_luminance():
+        if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.get_supports_luminance():
             if value is not None:
-                device.set_light_color(luminance=value)
+                await device.async_set_light_color(luminance=value)
                 status = True
             else:
-                return VALUE_REQUIRED_ERROR(device.name, action)
+                return VALUE_REQUIRED_ERROR(device_name, action)
         else:
-            return ACTION_NOT_SUPPORTED_ERROR(device.name, action)
+            return ACTION_NOT_SUPPORTED_ERROR(device_name, action)
     elif action == 'color':
-        if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.supports_light_control() and device.is_rgb():
+        if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.get_supports_rgb():
             if value is not None:
                 color = hex_color_to_rgb(value)
-                device.set_light_color(rgb=color)
+                print('color', color)
+                await device.async_set_light_color(rgb=color)
                 status = True
             else:
-                return VALUE_REQUIRED_ERROR(device.name, action)
+                return VALUE_REQUIRED_ERROR(device_name, action)
         else:
-            return ACTION_NOT_SUPPORTED_ERROR(device.name, action)
+            return ACTION_NOT_SUPPORTED_ERROR(device_name, action)
     elif action == 'temperature':
         if value is None:
-            return VALUE_REQUIRED_ERROR(device.name, action)
-        if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.supports_light_control() and device.is_light_temperature():
-            device.set_light_color(temperature=value)
+            return VALUE_REQUIRED_ERROR(device_name, action)
+        if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.get_supports_temperature():
+            await device.async_set_light_color(temperature=value)
             status = True
-        elif isinstance(device, ValveSubDevice):
+        elif isinstance(device, Mts100v3Valve):
             if is_valid_decimal(value):
                 temperature = float(value)
-                device.set_target_temperature(temperature)
+                await device.async_set_target_temperature(temperature)
             else:
-                return INVALID_VALUE_ERROR(device.name, action, value, 'float')
+                return INVALID_VALUE_ERROR(device_name, action, value, 'float')
         else:
-            return ACTION_NOT_SUPPORTED_ERROR(device.name, action)
+            return ACTION_NOT_SUPPORTED_ERROR(device_name, action)
     elif action == 'mode':
-        if isinstance(device, ValveSubDevice):
+        if isinstance(device, Mts100v3Valve):
             if value is not None:
                 mode = None
-                if value.isdigit():
-                    mode = int(value)
-                elif value.upper() in ThermostatV3Mode.__members__:
-                    mode = ThermostatV3Mode[value.upper()]
-                elif value.upper() in ThermostatMode.__members__:
-                    mode = ThermostatMode[value.upper()]
+                if value.upper() in ThermostatV3Mode.__members__:
+                    mode = ThermostatV3Mode(value.upper())
                 if mode is None:
-                    return SETTING_NOT_FOUND_ERROR(device.name, action, value)
+                    return SETTING_NOT_FOUND_ERROR(device_name, action, value)
                 else:
-                    device.set_mode(mode=mode)
+                    await device.async_set_mode(mode)
                     status = True
             else:
-                return VALUE_REQUIRED_ERROR(device.name, action)
+                return VALUE_REQUIRED_ERROR(device_name, action)
         else:
-            return ACTION_NOT_SUPPORTED_ERROR(device.name, action)
+            return ACTION_NOT_SUPPORTED_ERROR(device_name, action)
     else:
         return ACTION_NOT_FOUND_ERROR(action)
     light_state = None
-    if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES) and device.supports_light_control():
-        device.get_light_color()  # sometimes it gets the wrong color the first time
-        light_state = device.get_light_color()  # so do it twice
-        light_state['luminance'] = int(value) if action == 'brightness' or action == 'luminance' else light_state[
-            'luminance']
-        light_state['rgb'] = value if action == 'color' else dec_to_hex(light_state['rgb'])
-        light_state['temperature'] = int(value) if action == 'temperature' else light_state['temperature']
-    return jsonify({
+    if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES):
+        light_state = {
+            'brightness': int(value) if action == 'brightness' or action == 'luminance' else (device.get_luminance() if device.get_supports_luminance() else None),
+            'color': value if action == 'color' else (dec_to_hex(device.get_rgb_color()) if device.get_supports_rgb() else None),
+            'temperature': int(value) if action == 'temperature' else (device.get_color_temperature() if device.get_supports_temperature() else None)
+        }
+    return web.json_response({
         'success': True,
         'device': {
-            'nickname': device.name,
+            'nickname': device_name,
             'data': {
-                'online': device.online,
-                'state': device.get_status() or status,
+                'online': device.online_status == OnlineStatus.ONLINE,
+                'state': _is_on(device) or status,
                 'light_state': light_state
             },
-            'name': device.name,
+            'name': device_name,
             'icon': None,
             'id': uuid,
             'dev_type': device.type,
@@ -404,15 +387,31 @@ def perform_action(uuid, action):
     })
 
 
-if __name__ == '__main__':
-    manager = initiate_manager(EMAIL, PASSWORD)
-    try:
-        # Register event handlers for the manager...
-        manager.register_event_handler(event_handler)
+async def main():
+    global http_api_client
+    global manager
+    http_api_client = await MerossHttpClient.async_from_user_password(email=EMAIL, password=PASSWORD)
+    manager = initiate_manager()
+    await manager.async_init()
+    await manager.async_device_discovery()
+    for device in manager.find_devices():
+        await device.async_update()
 
-        # Starts the manager
-        manager.start()
-        api.run()
-    except Exception as e:
-        manager.stop(True)
-        raise e
+    api.add_routes([web.get('/quit', quit_api),
+                    web.get('/devices', get_devices),
+                    web.get('/device/{uuid}', get_device),
+                    web.get('/device/{uuid}/is_on', is_on),
+                    web.get('/device/{uuid}/skills', get_skills),
+                    web.post('/device/{uuid}/{action}', perform_action)])
+
+    yellow = '\033[93m'
+    esc_end = '\033[0m'
+    print(f'{yellow}(Press CTRL+\\ to logout of Meross and quit){esc_end}', end='\n\n')
+
+
+if __name__ == '__main__':
+    signal.signal(signal.SIGQUIT, logout)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    web.run_app(api, host='127.0.0.1', port=5000)
+    loop.close()

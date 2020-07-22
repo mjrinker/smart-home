@@ -223,6 +223,10 @@ fn.parseTime = (timeString, suntimeDay = new Date()) => {
     const minutes = parseInt(timeUnits[2] || '0');
     const seconds = parseInt(timeUnits[3] || '0');
     date.setHours(hours, minutes, seconds);
+  } else if (timeString === 'default') {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday;
   } else {
     const error = new Error(`Invalid time ${timeString}`);
     error.name = 'INVALID_TIME';
@@ -236,8 +240,8 @@ fn.isInTimeRange = (startTime, endTime) => {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
-  let start = fn.parseTime(startTime, today);
-  let end = fn.parseTime(endTime, tomorrow);
+  let start = startTime ? fn.parseTime(startTime, startTime.match(/^sunrise/i) ? today : tomorrow) : today;
+  let end = endTime ? fn.parseTime(endTime, tomorrow) : tomorrow;
   return today >= start && today < end;
 };
 
@@ -372,28 +376,13 @@ fn.performDeviceAction = async (devices, deviceData, fallback) => {
         }
 
         case 'toggle': {
-          fn.isOn(deviceData).then((isOn) => {
-            if (fallback) {
-              for (let device of devices) {
-                if (device.id === device.id) {
-                  device.data.state = !isOn;
-                }
-              }
-            }
-
-            if (isOn) {
-              device.turnOff().then(actionCallback);;
-            } else {
-              device.turnOn().then(actionCallback);;
-            }
-          });
-
+          device.toggle().then(actionCallback);
           break;
         }
 
         case 'brightness': {
           if (device.supportsFeature('brightness')) {
-            device.setBrightness(value).then(actionCallback);;
+            device.setBrightness(value).then(actionCallback);
           } else {
             errors.push({
               success: false,
@@ -408,7 +397,7 @@ fn.performDeviceAction = async (devices, deviceData, fallback) => {
 
         case 'luminance': {
           if (device.supportsFeature('brightness')) {
-            device.setBrightness(value).then(actionCallback);;
+            device.setBrightness(value).then(actionCallback);
           } else {
             errors.push({
               success: false,
@@ -423,7 +412,7 @@ fn.performDeviceAction = async (devices, deviceData, fallback) => {
 
         case 'color': {
           if (device.supportsFeature('color')) {
-            device.setColor(colors[value] || value).then(actionCallback);;
+            device.setColor(colors[fn.slugify(value)] || value).then(actionCallback);
           } else {
             errors.push({
               success: false,
@@ -439,9 +428,9 @@ fn.performDeviceAction = async (devices, deviceData, fallback) => {
         case 'temperature': {
           if (device.supportsFeature('temperature')) {
             if (device instanceof Light || device instanceof Bulb) {
-              device.setColorTemperature(value).then(actionCallback);;
+              device.setColorTemperature(value).then(actionCallback);
             } else if (device instanceof Climate || device instanceof Thermostat) {
-              device.setTemperature(value).then(actionCallback);;
+              device.setTemperature(value).then(actionCallback);
             }
           } else {
             errors.push({
@@ -458,7 +447,7 @@ fn.performDeviceAction = async (devices, deviceData, fallback) => {
         case 'mode': {
           if (device.supportsFeature('mode')) {
             if (device instanceof Thermostat) {
-              device.setOperationMode(value).then(actionCallback);;
+              device.setOperationMode(value).then(actionCallback);
             }
           }
 
@@ -559,6 +548,7 @@ fn.getDevices = async () => [...(await fn.getTuyaDevices() || []), ...(await fn.
 
 deviceConfig = fn.slugifyKeys(deviceConfig);
 scenes = fn.slugifyKeys(scenes);
+colors = fn.slugifyKeys(colors);
 
 const performDeviceActions = async (deviceActions) => {
   try {

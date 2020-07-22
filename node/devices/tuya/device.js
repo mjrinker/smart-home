@@ -29,6 +29,14 @@ class TuyaDevice {
     return JSON.parse((await this.getSkills())['state']);
   }
 
+  async toggle() {
+    if (this.isOn()) {
+      return await this.turnOff()
+    }
+
+    return await this.turnOn()
+  }
+
   async getSkills() {
     var state = await this._api.find({
       devId: this._deviceId
