@@ -23,6 +23,8 @@ ENVIRONMENT = os.getenv('ENVIRONMENT')
 EMAIL = os.getenv('MEROSS_EMAIL')
 PASSWORD = os.getenv('MEROSS_PASSWORD')
 
+PORT = 5001 if ENVIRONMENT == 'stg' else 5000
+
 DEVICE_TYPES = (BaseDevice, LightMixin, ToggleXMixin, ToggleMixin, GarageOpenerMixin, HubDevice,
                 SprayMixin, GenericSubDevice, Ms100Sensor, Mts100v3Valve)
 ON_OFF_DEVICE_TYPES = (LightMixin, ToggleXMixin, ToggleMixin, Mts100v3Valve)
@@ -413,5 +415,5 @@ if __name__ == '__main__':
     signal.signal(signal.SIGQUIT, logout)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
-    web.run_app(api, host='127.0.0.1', port=5000)
+    web.run_app(api, host='127.0.0.1', port=PORT)
     loop.close()
