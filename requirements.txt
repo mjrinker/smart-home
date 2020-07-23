@@ -1,0 +1,4 @@
+asyncio>=3.4.3
+aiohttp>=3.6.2
+python-dotenv>=0.14.0
+meross_iot>=0.4.0.0
