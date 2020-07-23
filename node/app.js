@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const _ = require('lodash');
 const bodyParser = require('body-parser');
 const CloudTuya = require('./cloudtuya');
@@ -24,9 +26,9 @@ const Thermostat = require('./devices/meross/thermostat');
 // const Sensor = require('./devices/meross/sensor');
 
 const app = express();
-const port = 3030;
+const port = process.env.ENVIRONMENT === 'stg' ? 3031 : 3030;
 const merossURL = 'localhost';
-const merossPort = 5000;
+const merossPort = process.env.ENVIRONMENT === 'stg' ? 5001 : 5000;
 const merossFullURL = `http://${merossURL}:${merossPort}`;
 
 const location = {
