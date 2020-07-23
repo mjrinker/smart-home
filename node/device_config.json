@@ -178,6 +178,11 @@
         }
     },
     "Bathroom": "Master Bath",
+    "Bathroom 1": "Master Bath 1",
+    "Bathroom 2": "Master Bath 2",
+    "Master Bathroom": "Master Bath",
+    "Master Bathroom 1": "Master Bath 1",
+    "Master Bathroom 2": "Master Bath 2",
     "Master Bedroom": {
         "ids": ["1909203216975990802548e1e9527050", "1909207153246790802548e1e95281ed", "1909204719826890802548e1e9526cbc"],
         "platform": "meross",
@@ -296,6 +301,7 @@
           }
         }
     },
+    "Master Bedroom Lamp": "Bedroom lamp",
     "Ashlee's Office": {
         "ids": ["1909202461469090802548e1e95275d8", "1909202461469090802548e1e95275d8", "1909204889052390802548e1e95267e1"],
         "platform": "meross",

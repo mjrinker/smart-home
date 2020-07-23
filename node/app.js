@@ -276,7 +276,7 @@ fn.getDeviceIdInfo = (deviceInfo, parentPath = '') => {
 
   if (Array.isArray(deviceInfo)) {
     return deviceInfo.flatMap((nickname) => {
-      fn.getAliasIds(nickname, parentPath);
+      return fn.getAliasIds(nickname, parentPath);
     });
   }
 
@@ -289,18 +289,6 @@ fn.getDeviceIdInfo = (deviceInfo, parentPath = '') => {
 
 fn.isOn = async (deviceData) => {
   return await deviceData.device.isOn();
-  // let isOn = false;
-  // try {
-  //   isOn = await deviceData.device.isOn();
-  // } catch (error) {
-  //   try {
-  //     isOn = (await api.state({
-  //       devId: deviceData.device.id,
-  //     }))[deviceData.device.id];
-  //   } catch (error) {
-  //     isOn = _.get(deviceData, 'data.state') || false;
-  //   }
-  // }
 };
 
 fn.performDeviceAction = async (devices, deviceData, fallback) => {
@@ -639,6 +627,7 @@ const performDeviceActions = async (deviceActions) => {
         if (deviceIdInfo.timeBased) {
           deviceAction.actions = Object.fromEntries(
             await (fn.asyncArrayIterator(Object.entries(deviceAction.actions), 'map', async ([action, value], index) => {
+            action = fn.slugify(action);
             if ((deviceIdInfo.timeBased[action] || (action === 'toggle' && deviceIdInfo.timeBased.on))) {
               let timeAction = action;
               if (action === 'toggle') {
