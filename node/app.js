@@ -42,6 +42,8 @@ process.env.TZ = location.timezone;
 let apiKeys = {};
 let deviceConfig = {};
 let scenes = {};
+let rooms = {};
+let colors = {};
 
 try {
   apiKeys = require('./keys.json');
@@ -55,6 +57,14 @@ try {
   console.error(err);
   console.warn('device_config.json is missing. creating temporary');
   deviceConfig = {};
+}
+
+try {
+  rooms = require('./rooms.json');
+} catch (err) {
+  console.error(err);
+  console.warn('rooms.json is missing. creating temporary');
+  rooms = {};
 }
 
 try {
@@ -626,6 +636,10 @@ const performDeviceActions = async (deviceActions) => {
           ...(devices.find((device) => device.id === deviceId) || {})
         };
 
+        if (Array.isArray(deviceAction.actions)) {
+          deviceAction.actions = Object.fromEntries(deviceAction.actions.map((action) => [action.action, action.value]));
+        }
+
         if (deviceIdInfo.timeBased) {
           deviceAction.actions = Object.fromEntries(
             await (fn.asyncArrayIterator(Object.entries(deviceAction.actions), 'map', async ([action, value], index) => {
@@ -740,6 +754,8 @@ const performDeviceActions = async (deviceActions) => {
     };
   }
 };
+
+app.get('/rooms', async (req, res) => res.json(rooms));
 
 app.post('/device/action', async (req, res) => {
   const deviceActions = req.body;
