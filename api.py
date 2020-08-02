@@ -18,6 +18,9 @@ from meross_iot.model.enums import OnlineStatus, ThermostatV3Mode
 if not os.path.isfile('.env'):
     shutil.copyfile('.env.sample', '.env')
 
+with open('./pid.txt', 'w') as fout:
+    fout.write(str(os.getpid()))
+
 dotenv.load_dotenv()
 ENVIRONMENT = os.getenv('ENVIRONMENT')
 EMAIL = os.getenv('MEROSS_EMAIL')
@@ -413,6 +416,7 @@ async def main():
 
 if __name__ == '__main__':
     signal.signal(signal.SIGQUIT, logout)
+    signal.signal(signal.SIGUSR1, logout)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
     web.run_app(api, host='127.0.0.1', port=PORT)
