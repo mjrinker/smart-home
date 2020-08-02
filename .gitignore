@@ -9,3 +9,4 @@ keys.json
 /node/devices.json
 .python-version
 pipfreeze.txt
+pid.txt
