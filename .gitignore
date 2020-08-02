@@ -6,3 +6,6 @@
 *.sublime-workspace
 /venv/*
 keys.json
+/node/devices.json
+.python-version
+pipfreeze.txt
