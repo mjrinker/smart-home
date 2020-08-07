@@ -11,7 +11,7 @@
         "type": "socket",
         "presets": {}
     },
-    "Air Freshener": "Socket",
+    "Air Freshener": "Candle Socket",
     "Vanity USB": {
         "ids": "10021424b4e62d5b016d_7",
         "platform": "tuya",
@@ -303,7 +303,7 @@
     },
     "Master Bedroom Lamp": "Bedroom lamp",
     "Ashlee's Office": {
-        "ids": ["1909202461469090802548e1e95275d8", "1909202461469090802548e1e95275d8", "1909204889052390802548e1e95267e1"],
+        "ids": ["1909202461469090802548e1e95275d8", "1909208074936090802548e1e952713a", "1909204889052390802548e1e95267e1"],
         "platform": "meross",
         "type": "bulb",
         "presets": {
