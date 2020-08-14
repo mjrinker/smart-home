@@ -6,21 +6,21 @@ class Bulb extends MerossDevice {
     const action = [
       ...(features.brightness ? ['brightness'] : []),
       ...(features.color ? ['color'] : []),
-      ...(features.temperature ? ['temperature'] : [])
+      ...(features.temperature ? ['temperature'] : []),
     ].join(',');
 
     const value = [
       ...(features.brightness ? [features.brightness] : []),
       ...(features.color ? [features.color] : []),
-      ...(features.temperature ? [features.temperature] : [])
+      ...(features.temperature ? [features.temperature] : []),
     ].join(',').replace(/#([0-9a-f]{6})/gi, '$1');
 
-    return fetch(`${this._url}/device/${this._deviceId}/${action}?value=${value}`, {
+    return fetch(`${this.url}/device/${this.deviceId}/${action}?value=${value}`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     }).then((response) => response.text().then((text) => {
       try {
         return JSON.parse(text);
@@ -31,11 +31,11 @@ class Bulb extends MerossDevice {
   }
 
   async supportsBrightness() {
-    return await this.supportsFeature('brightness');
+    return this.supportsFeature('brightness');
   }
 
   async getBrightness() {
-    return JSON.parse((await this.getSkills())['brightness']);
+    return JSON.parse((await this.getSkills()).brightness);
   }
 
   async setBrightness(value) {
@@ -43,11 +43,11 @@ class Bulb extends MerossDevice {
   }
 
   async supportsColor() {
-    return await this.supportsFeature('color');
+    return this.supportsFeature('color');
   }
 
   async getColor() {
-    return (await this.getSkills())['color'];
+    return (await this.getSkills()).color;
   }
 
   async setColor(value) {
@@ -55,11 +55,11 @@ class Bulb extends MerossDevice {
   }
 
   async supportsColorTemperature() {
-    return await this.supportsFeature('color_temp');
+    return this.supportsFeature('color_temp');
   }
 
   async getColorTemperature() {
-    return (await this.getSkills())['color_temp'];
+    return (await this.getSkills()).color_temp;
   }
 
   async setColorTemperature(value) {

@@ -1,51 +1,52 @@
 class TuyaDevice {
   constructor(options) {
-    if(!options.api){
+    if (!options.api) {
       throw new Error('Please pass the Tuya API');
     }
-    this._api = options.api;
+    this.api = options.api;
 
-    if(!options.deviceId){
+    if (!options.deviceId) {
       throw new Error('Please pass the Tuya Device ID');
     }
-    this._deviceId = options.deviceId;
+    this.deviceId = options.deviceId;
   }
 
   async turnOn() {
-    return await this._api.setState({
-      devId: this._deviceId,
+    return this.api.setState({
+      devId: this.deviceId,
       setState: 'On',
     });
   }
 
   async turnOff() {
-    return await this._api.setState({
-      devId: this._deviceId,
+    return this.api.setState({
+      devId: this.deviceId,
       setState: 'Off',
     });
   }
 
-  async isOn(){
-    return JSON.parse((await this.getSkills())['state']);
+  async isOn() {
+    return JSON.parse((await this.getSkills()).state);
   }
 
   async toggle() {
     if (this.isOn()) {
-      return await this.turnOff()
+      return this.turnOff();
     }
 
-    return await this.turnOn()
+    return this.turnOn();
   }
 
   async getSkills() {
-    var state = await this._api.find({
-      devId: this._deviceId
+    const state = await this.api.find({
+      devId: this.deviceId,
     });
+
     return state && state[0] && state[0].data;
   }
 
   async supportsFeature(feature) {
-    var skills = await this.getSkills();
+    const skills = await this.getSkills();
     return !!skills[feature];
   }
 }

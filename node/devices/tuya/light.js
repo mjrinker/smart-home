@@ -2,36 +2,39 @@ const TuyaDevice = require('./device');
 
 class Light extends TuyaDevice {
   /* Brightness */
-  async supportsBrightness(){
-    return await this.supportsFeature('brightness');
+  async supportsBrightness() {
+    return this.supportsFeature('brightness');
   }
-  async getBrightness(){
+
+  async getBrightness() {
     // Converts string to number and calculates to percentage
-    return JSON.parse((await this.getSkills())['brightness']) / 255;
+    return JSON.parse((await this.getSkills()).brightness) / 255;
   }
+
   async setBrightness(value) {
-    return await this._api.setState({
-      devId: this._deviceId,
+    return this.api.setState({
+      devId: this.deviceId,
       command: 'brightnessSet',
       setState: value,
     });
   }
 
-
-  /* Color*/
-  async supportsColor(){
-    return await this.supportsFeature('color');
-  }
-  async getColor(){
-    return (await this.getSkills())['color'];
+  /* Color */
+  async supportsColor() {
+    return this.supportsFeature('color');
   }
 
-  /* Color Temperatur */
-  async supportsColorTemperature(){
-    return await this.supportsFeature('color_temp');
+  async getColor() {
+    return (await this.getSkills()).color;
   }
-  async getColorTemperature(){
-    return (await this.getSkills())['color_temp'];
+
+  /* Color Temperature */
+  async supportsColorTemperature() {
+    return this.supportsFeature('color_temp');
+  }
+
+  async getColorTemperature() {
+    return (await this.getSkills()).color_temp;
   }
 }
 module.exports = Light;

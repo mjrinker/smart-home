@@ -12,7 +12,6 @@ const debug = require('debug')('cloudtuya');
  *
  */
 
-
 /**
 * A TuyaCloud object
 * @class
@@ -33,9 +32,9 @@ class CloudTuya {
     // Set to empty object if undefined
     const config = (options) || {};
     this.devices = [];
-    if(!config.userName || !config.password) {
+    if (!config.userName || !config.password) {
       throw new Error('Missing loging email/pass');
-    } else{
+    } else {
       this.core = {
         userName: config.userName,
         password: config.password,
@@ -51,7 +50,7 @@ class CloudTuya {
     config.region = (config.region && knownRegions.indexOf(config.region.toLowerCase()) !== -1)
       ? config.region.toLowerCase()
       : 'eu';
-    this.uri = 'https://px1.tuya' + config.region + '.com/homeassistant';
+    this.uri = `https://px1.tuya${config.region}.com/homeassistant`;
   }
 
   /**
@@ -60,15 +59,20 @@ class CloudTuya {
    */
   async post(options) {
     // Set to empty object if undefined
-    if(this.tokens && this.tokens.expires_in < 0) this.getToken();
+    if (this.tokens && this.tokens.expires_in < 0) {
+      this.getToken();
+    }
+
     const config = (options) || {};
     config.method = 'POST';
     return new Promise((resolve, reject) => {
       request(config, (err, response, body) => {
-        if(!err && response.statusCode === 200) {
+        if (!err && response.statusCode === 200) {
           debug(body);
           resolve(body);
-        } else if(err) reject(err);
+        } else if (err) {
+          reject(err);
+        }
       });
     });
   }
@@ -99,14 +103,16 @@ class CloudTuya {
       headers,
       json: data,
     };
-    const{ payload: { devices } } = await this.post(postConfig);
+    const { payload: { devices } } = await this.post(postConfig);
     this.devices = devices;
     this.currentDevices = devices;
     debug(devices);
     // Check if device is in device list first
-    if(config.id) {
-      const matchDevice = await this.devices.filter(device => device.id === config.id);
-      if(matchDevice) this.currentDevices = matchDevice;
+    if (config.id) {
+      const matchDevice = await this.devices.filter((device) => device.id === config.id);
+      if (matchDevice) {
+        this.currentDevices = matchDevice;
+      }
     }
 
     return this.currentDevices;
@@ -114,21 +120,21 @@ class CloudTuya {
 
   // Converts true/false to ON/OFF
   static smap(itemState) {
-    return(itemState && 'ON') || 'OFF';
+    return (itemState && 'ON') || 'OFF';
   }
 
   // Convert text on/off, logic and numbers into 1/0 values
   static lmap(itemState) {
-    if((typeof itemState === 'number')
+    if ((typeof itemState === 'number')
       && (itemState === 0
       || itemState === 1)) {
       return itemState;
     }
-    if(typeof itemState === typeof true) {
-      return(itemState && 1) || 0;
+    if (typeof itemState === typeof true) {
+      return (itemState && 1) || 0;
     }
-    if(typeof itemState === 'string') {
-      return(['on', 'true', '1']
+    if (typeof itemState === 'string') {
+      return (['on', 'true', '1']
         .includes(itemState.toLowerCase())
         && 1) || 0;
     }
@@ -147,14 +153,14 @@ class CloudTuya {
     let devices = await this.find(options);
     const config = (options) || {};
     debug(`prefilter ${JSON.stringify(devices)}`);
-    devices = (config.id) ? devices.filter(device => device.id === config.id) : devices;
+    devices = (config.id) ? devices.filter((device) => device.id === config.id) : devices;
     debug(`postfilter ${JSON.stringify(devices)}`);
     const states = {};
-    const returnMap = await devices.map(device => this
+    const returnMap = await devices.map((device) => this
       .updateStatesCache(device.id, CloudTuya.smap(device.data.state), states));
     debug(`Return map ${JSON.stringify(returnMap)}`);
     debug(states);
-    return(states[config.id]) || states;
+    return (states[config.id]) || states;
   }
 
   async setState(options) {
@@ -212,7 +218,7 @@ class CloudTuya {
     this.accessToken = tokens.access_token;
     debug(tokens);
 
-    if(tokens && tokens.responseStatus && tokens.responseStatus === 'error'){
+    if (tokens && tokens.responseStatus && tokens.responseStatus === 'error') {
       console.error(tokens.errorMsg);
       return null;
     }

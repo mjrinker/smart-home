@@ -1,0 +1,44 @@
+{
+    "env": {
+        "commonjs": true,
+        "es2020": true,
+        "node": true
+    },
+    "extends": [
+        "airbnb-base"
+    ],
+    "globals": {},
+    "parserOptions": {
+        "ecmaFeatures": {},
+        "ecmaVersion": 11
+    },
+    "plugins": [],
+    "rules": {
+        "brace-style": ["error", "1tbs"],
+        "curly": ["error", "all"],
+        "func-names": ["error", "never"],
+        "import/no-extraneous-dependencies": [
+            "error", {
+                "devDependencies": true,
+                "optionalDependencies": false,
+                "peerDependencies": false
+            }
+        ],
+        "max-len": [
+          "error", {
+            "code": 100,
+            "ignoreComments": true,
+            "ignoreTrailingComments": true,
+            "ignoreUrls": true,
+            "ignoreStrings": true,
+            "ignoreTemplateLiterals": true,
+            "ignoreRegExpLiterals": true
+          }
+        ],
+        "no-await-in-loop": "off",
+        "no-console": "off",
+        "no-fallthrough": ["error", { "commentPattern": "falls?\\s*through" }],
+        "no-plusplus": ["error", { "allowForLoopAfterthoughts": true }],
+        "no-underscore-dangle": "off"
+    }
+}

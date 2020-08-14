@@ -2,16 +2,15 @@ const TuyaDevice = require('./device');
 
 class Fan extends TuyaDevice {
   async setSpeed(value) {
-    return await this._api.setState({
-      devId: this._deviceId,
+    return this.api.setState({
+      devId: this.deviceId,
       command: 'windSpeedSet',
       setState: value,
     });
   }
-  async supportsOcillate(){
-    return await this.supportsFeature('direction');
+
+  async supportsOcillate() {
+    return this.supportsFeature('direction');
   }
-
-
 }
 module.exports = Fan;

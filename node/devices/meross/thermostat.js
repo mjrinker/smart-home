@@ -1,13 +1,14 @@
+const fetch = require('node-fetch');
 const MerossDevice = require('./device');
 
 class Thermostat extends MerossDevice {
   async setTemperature(value) {
-    return fetch(`${this._url}/device/${this._deviceId}/temperature?value=${value}`, {
+    return fetch(`${this.url}/device/${this.deviceId}/temperature?value=${value}`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     }).then((response) => response.text().then((text) => {
       try {
         return JSON.parse(text);
@@ -18,12 +19,12 @@ class Thermostat extends MerossDevice {
   }
 
   async setOperationMode(value) {
-    return fetch(`${this._url}/device/${this._deviceId}/mode?value=${value}`, {
+    return fetch(`${this.url}/device/${this.deviceId}/mode?value=${value}`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     }).then((response) => response.text().then((text) => {
       try {
         return JSON.parse(text);
@@ -33,7 +34,7 @@ class Thermostat extends MerossDevice {
     }));
   }
 
-  async supportsMode() {
+  static async supportsMode() {
     return true;
   }
 }
