@@ -155,7 +155,7 @@ module.exports = (envVars) => {
   );
 
   returnObj.getRoomsConfig = (modelsBy) => (
-    modelsBy.Room.id._values()._sortBy('order')._flatMap((roomsById) => (
+    modelsBy.Room.id._values()._sortBy('0.order')._flatMap((roomsById) => (
       roomsById._map((room) => ({
         label: room.label,
         name: room.name,
