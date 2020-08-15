@@ -125,7 +125,7 @@ module.exports = (envVars) => {
                     return [conditionalAction.condition || 'default', presetName];
                   })._fromPairs();
                   return [action, scheduledPresets];
-                })._fromPairs(),
+                })._filter(([action]) => action !== 'undefined')._fromPairs(),
               } : {}),
             },
           ];

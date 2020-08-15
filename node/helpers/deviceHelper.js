@@ -336,9 +336,26 @@ exports.performDeviceActions = async (deviceActions) => {
     let totalDevices = 0;
     let deviceCounter = 0;
 
-    await deviceActions._forEach(async (deviceAction) => {
+    const moreDeviceActions = [];
+
+    const deviceActionsLoopCallback = async (deviceAction) => {
       const deviceActionCopy = _.cloneDeep(deviceAction);
       const deviceNickname = deviceActionCopy.nickname;
+
+      if (deviceNickname.match(/^\*/)) {
+        const deviceType = deviceNickname.match(/^\*(.*)/)[1]._lowerCase();
+        moreDeviceActions.push(...deviceConfig._values()._filterMap(
+          (device) => (
+            device._isPlainObject && (!deviceType || device.type === deviceType)
+          ),
+          (device) => ({
+            nickname: device.name,
+            actions: deviceActionCopy.actions,
+          }),
+        ));
+        return;
+      }
+
       const deviceInfo = deviceConfig[fn.slugify(deviceNickname)] || {};
       let deviceIdsInfo = [];
       try {
@@ -428,14 +445,18 @@ exports.performDeviceActions = async (deviceActions) => {
 
                 const timeBasedSchedules = deviceIdInfo.timeBased[timeAction];
                 if (timeBasedSchedules) {
-                  const scheduledPresetConfigKey = timeBasedSchedules._keys()._find(
+                  let scheduledPresetConfigKey = timeBasedSchedules._keys()._find(
                     (times) => {
                       const timesSplit = times.split('->');
                       const startTime = timesSplit[0];
                       const endTime = timesSplit[1];
-                      return fn.isInTimeRange(startTime, endTime);
+                      return times !== 'default' && fn.isInTimeRange(startTime, endTime);
                     },
                   );
+
+                  if (!scheduledPresetConfigKey && timeBasedSchedules._keys().includes('default')) {
+                    scheduledPresetConfigKey = 'default';
+                  }
 
                   const scheduledPresetConfig = {
                     times: scheduledPresetConfigKey,
@@ -473,7 +494,10 @@ exports.performDeviceActions = async (deviceActions) => {
           console.error(error);
         });
       });
-    });
+    };
+
+    await deviceActions._forEach(deviceActionsLoopCallback);
+    await moreDeviceActions._forEach(deviceActionsLoopCallback);
 
     return await fn.waitUntil(() => (deviceCounter >= totalDevices), () => {
       if (fallback) {
