@@ -199,10 +199,18 @@ async def get_device(request):
     device = get_device_by_uuid(uuid)
     if device is None:
         return DEVICE_NOT_FOUND_ERROR(uuid)
+    light_state = None
+    if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES):
+        light_state = {
+            'brightness': device.get_luminance() if device.get_supports_luminance() else None,
+            'color': dec_to_hex(device.get_rgb_color()) if device.get_supports_rgb() else None,
+            'temperature': device.get_color_temperature() if device.get_supports_temperature() else None
+        }
     return web.json_response({
         'data': {
             'online': device.online_status == OnlineStatus.ONLINE,
-            'state': _is_on(device)
+            'state': _is_on(device),
+            'light_state': light_state
         },
         'name': device.name,
         'icon': None,

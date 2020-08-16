@@ -102,7 +102,7 @@ let envVars = {};
     sequelize,
     Thermostat,
     TuyaDevice,
-    versions: ['1.0.0', '2.0.0']._sortBy(),
+    versions: ['1.0.0', '2.0.0', '2.1.0']._sortBy(),
   };
 
   let fn = getFunctions(envVars);
@@ -137,6 +137,7 @@ let envVars = {};
   envVars.deviceConfig = deviceConfig;
   envVars.deviceTypeClassMap = deviceTypeClassMap;
   envVars.models = models;
+  envVars.modelsBy = modelsBy;
   envVars.rooms = rooms;
   envVars.scenes = scenes;
 

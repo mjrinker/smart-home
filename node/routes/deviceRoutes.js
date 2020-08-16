@@ -17,7 +17,7 @@ const routeList = [
     controller: 'deviceController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: envVars.versions, func: 'performActions' },
+      { versions: ['1.0.0'], func: 'performActions' },
     ],
   },
   {
@@ -27,6 +27,15 @@ const routeList = [
     auth: false, // TODO set this to true
     versions: [
       { versions: envVars.versions, func: 'performActions' },
+    ],
+  },
+  {
+    path: '',
+    method: 'post',
+    controller: 'deviceController',
+    auth: false, // TODO set this to true
+    versions: [
+      { versions: ['2.1.0'], func: 'getDevices' },
     ],
   },
 ];
