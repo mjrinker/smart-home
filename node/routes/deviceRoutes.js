@@ -30,12 +30,12 @@ const routeList = [
     ],
   },
   {
-    path: '',
+    path: '/state',
     method: 'post',
     controller: 'deviceController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.1.0'], func: 'getDevices' },
+      { versions: ['2.1.0'], func: 'getDeviceState' },
     ],
   },
 ];

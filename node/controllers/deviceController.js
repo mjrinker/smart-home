@@ -14,7 +14,7 @@ exports.performActions = fn.asyncMw(async (req, res) => {
   return res.status(response.status).json(response);
 });
 
-exports.getDevices = fn.asyncMw(async (req, res) => {
+exports.getDeviceState = fn.asyncMw(async (req, res) => {
   const deviceNames = req.body || [];
   if (!deviceNames._isArray() || deviceNames.length === 0) {
     return res.status(400).json({
@@ -25,7 +25,7 @@ exports.getDevices = fn.asyncMw(async (req, res) => {
     });
   }
 
-  const deviceResponses = (await deviceNames._flatMap(async (deviceName) => {
+  const mfgIds = (await deviceNames._flatMap(async (deviceName) => {
     const deviceInfo = deviceConfig[fn.slugify(deviceName)] || {};
     let deviceIdsInfo = [];
     try {
@@ -43,28 +43,38 @@ exports.getDevices = fn.asyncMw(async (req, res) => {
 
     return deviceIdsInfo._map(async (deviceIdInfo) => {
       if (deviceIdInfo.platform === 'meross') {
-        const deviceResponse = await (await fetch(`${merossFullURL}/device/${deviceIdInfo.mfg_id}`, {
-          method: 'GET',
-          headers: {
-            Accept: 'application/json',
-          },
-        })).text();
-
-        try {
-          return JSON.parse(deviceResponse);
-        } catch (e) {
-          return null;
-        }
+        return deviceIdInfo.mfg_id;
       }
 
       return null;
     });
   }))._filter((deviceResponse) => deviceResponse)[0];
 
-  return res.status(200).json({
-    success: true,
-    status: 200,
-    code: 0,
-    devices: deviceResponses || [],
+  const deviceStatesResponse = await fetch(`${merossFullURL}/devices/state`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(mfgIds),
+  });
+
+  let deviceStateResponseBody = await deviceStatesResponse.text();
+
+  try {
+    deviceStateResponseBody = JSON.parse(deviceStateResponseBody);
+    deviceStateResponseBody = deviceStateResponseBody.map((device) => ({
+      ...device,
+      name: fn.slugify(device.name),
+    }));
+  } catch (e) {
+    // do nothing
+  }
+
+  return res.status(deviceStatesResponse.status).json({
+    success: deviceStatesResponse.status < 400,
+    status: deviceStatesResponse.status,
+    code: Number(deviceStatesResponse.status >= 400),
+    devices: deviceStateResponseBody || [],
   });
 });

@@ -220,6 +220,29 @@ async def get_device(request):
     })
 
 
+async def get_device_states(request):
+    uuids = await request.json()
+    states = []
+    for uuid in uuids:
+        device = get_device_by_uuid(uuid)
+        if device is None:
+            return DEVICE_NOT_FOUND_ERROR(uuid)
+        light_state = None
+        if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES):
+            light_state = {
+                'brightness': device.get_luminance() if device.get_supports_luminance() else None,
+                'color': dec_to_hex(device.get_rgb_color()) if device.get_supports_rgb() else None,
+                'temperature': device.get_color_temperature() if device.get_supports_temperature() else None
+            }
+        states.append({
+            'name': device.name,
+            'online': device.online_status == OnlineStatus.ONLINE,
+            'state': _is_on(device),
+            'light_state': light_state
+        })
+    return web.json_response(states)
+
+
 async def is_on(request):
     uuid = request.match_info['uuid']
     device = get_device_by_uuid(uuid)
@@ -413,6 +436,7 @@ async def main():
     api.add_routes([web.get('/quit', quit_api),
                     web.get('/devices', get_devices),
                     web.get('/device/{uuid}', get_device),
+                    web.post('/devices/state', get_device_states),
                     web.get('/device/{uuid}/is_on', is_on),
                     web.get('/device/{uuid}/skills', get_skills),
                     web.post('/device/{uuid}/{action}', perform_action)])
