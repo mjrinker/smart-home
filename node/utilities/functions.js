@@ -101,12 +101,28 @@ module.exports = (envVars) => {
   };
 
   fn.isInTimeRange = (startTime, endTime) => {
-    const today = new Date();
+    const now = new Date();
+    const today = new Date(now);
+    const yesterday = new Date(today);
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    const start = startTime ? fn.parseTime(startTime, startTime.match(/^sunrise/i) ? today : tomorrow) : today;
-    const end = endTime ? fn.parseTime(endTime, tomorrow) : tomorrow;
-    return today >= start && today < end;
+    yesterday.setDate(today.getDate() - 1);
+
+    let startSuntimeDay = tomorrow;
+    if (startTime.match(/^sunset/i)
+      && now < getSunrise(location.lat, location.lng, tomorrow)) {
+      startSuntimeDay = today;
+    }
+
+    let endSuntimeDay = tomorrow;
+    if (endTime.match(/^sunrise/i)
+      && now < getSunset(location.lat, location.lng, tomorrow)) {
+      endSuntimeDay = today;
+    }
+
+    const start = startTime ? fn.parseTime(startTime, startSuntimeDay) : yesterday;
+    const end = endTime ? fn.parseTime(endTime, endSuntimeDay) : tomorrow;
+    return now >= start && now < end;
   };
 
   fn.parseTime = (timeString, suntimeDay = new Date()) => {

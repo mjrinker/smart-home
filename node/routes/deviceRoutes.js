@@ -35,7 +35,7 @@ const routeList = [
     controller: 'deviceController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.1.0'], func: 'getDeviceState' },
+      { versions: ['2.1.0', '2.1.1'], func: 'getDeviceState' },
     ],
   },
 ];
