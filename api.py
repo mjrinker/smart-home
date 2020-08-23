@@ -160,6 +160,11 @@ def get_device_by_uuid(uuid):
         return manager.find_devices(device_uuids=[uuid])[0]
 
 
+def get_devices_by_uuids(uuids):
+    if isinstance(manager, MerossManager):
+        return manager.find_devices(device_uuids=uuids)
+
+
 def _is_on(device):
     if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES):
         return device.get_light_is_on()
@@ -223,10 +228,10 @@ async def get_device(request):
 async def get_device_states(request):
     uuids = await request.json()
     states = []
-    for uuid in uuids:
-        device = get_device_by_uuid(uuid)
-        if device is None:
-            return DEVICE_NOT_FOUND_ERROR(uuid)
+    devices = get_devices_by_uuids(uuids)
+    if devices is None or len(devices) == 0:
+        return DEVICE_NOT_FOUND_ERROR(','.join(uuids))
+    for device in devices:
         light_state = None
         if isinstance(device, LIGHT_CONTROL_DEVICE_TYPES):
             light_state = {

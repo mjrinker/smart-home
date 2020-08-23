@@ -27,6 +27,17 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
 
   const mfgIds = (await deviceNames._flatMap(async (deviceName) => {
     const deviceInfo = deviceConfig[fn.slugify(deviceName)] || {};
+
+    if (deviceName.match(/^\*/)) {
+      const deviceType = deviceName.match(/^\*(.*)/)[1]._lowerCase();
+      return deviceConfig._values()._filterMap(
+        (device) => (
+          device._isPlainObject && (!deviceType || device.type === deviceType)
+        ),
+        (device) => device.mfg_id,
+      );
+    }
+
     let deviceIdsInfo = [];
     try {
       deviceIdsInfo = deviceHelper.getDeviceIdInfo(deviceInfo, deviceName);
