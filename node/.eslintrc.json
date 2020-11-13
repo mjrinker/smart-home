@@ -39,6 +39,7 @@
         "no-console": "off",
         "no-fallthrough": ["error", { "commentPattern": "falls?\\s*through" }],
         "no-plusplus": ["error", { "allowForLoopAfterthoughts": true }],
+        "no-shadow": "off",
         "no-underscore-dangle": "off"
     }
 }

@@ -18,7 +18,7 @@ exports.playScene = fn.asyncMw(async (req, res) => {
     });
   }
 
-  const deviceActions = scene.sceneActions._map((sceneAction) => {
+  const deviceActions = scene.sceneActions.map((sceneAction) => {
     const sceneActionModel = sceneAction[sceneAction.model];
     const modelName = sceneActionModel.name;
     const actions = {

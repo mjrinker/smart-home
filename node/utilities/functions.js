@@ -11,9 +11,10 @@ module.exports = (envVars) => {
     versions,
   } = envVars;
 
-  fn.asyncArrayIterator = async (array, iterator, callback) => (
-    Promise.all(array[iterator]((value, key) => callback(value, key)))
-  );
+  fn.asyncArrayIterator = async (array, iterator, callback) => {
+    const useIterator = iterator === 'forEach' ? 'map' : iterator;
+    return Promise.all(array[useIterator]((value, key) => callback(value, key)));
+  };
 
   fn.asyncMw = (func) => (req, res, next) => {
     Promise.resolve(func(req, res, next))
@@ -55,9 +56,46 @@ module.exports = (envVars) => {
     }
   };
 
+  fn.filterMap = (collection, filterCallback, mapCallback) => {
+    const array = [];
+    collection.forEach((element, index) => {
+      let condition = null;
+      if (_.isFunction(filterCallback)) {
+        condition = filterCallback(element, index);
+      } else if (_.isPlainObject(filterCallback)) {
+        condition = _.isMatch(element, filterCallback);
+      } else if (Array.isArray(filterCallback)) {
+        condition = _.isMatch(element, { [filterCallback[0]]: filterCallback[1] });
+      } else {
+        condition = element.get(filterCallback);
+      }
+
+      if (_.isFunction(condition)) {
+        condition = condition();
+      }
+
+      if (condition) {
+        let newElement = null;
+        if (_.isFunction(mapCallback)) {
+          newElement = mapCallback(element, index);
+        } else {
+          newElement = element.get(mapCallback);
+        }
+
+        if (_.isFunction(newElement)) {
+          newElement = newElement();
+        }
+
+        array.push(newElement);
+      }
+    });
+
+    return array;
+  };
+
   fn.getMilliseconds = (timeString) => {
     const timeUnits = timeString.replace(/([a-z]+)/gi, '$1<!--DELIMITER-->').split('<!--DELIMITER-->');
-    return timeUnits._map((timeUnit) => {
+    return timeUnits.map((timeUnit) => {
       const amount = parseInt(timeUnit.replace(/\D/g, ''), 10);
       const unit = timeUnit.replace(/[^a-z]/gi, '');
       switch (unit) {
@@ -97,7 +135,7 @@ module.exports = (envVars) => {
           return '';
         }
       }
-    })._filter((amount) => amount)._reduce((a, b) => a + b, 0);
+    }).filter((amount) => amount).reduce((a, b) => a + b, 0);
   };
 
   fn.isInTimeRange = (startTime, endTime) => {
@@ -178,13 +216,13 @@ module.exports = (envVars) => {
   );
 
   fn.setRoutes = (params) => {
-    params.routeList._forEach((route) => {
+    params.routeList.forEach((route) => {
       let remainingVersions = [...versions];
       const path = (route.prefix || params.prefix) + route.path;
       const versionRoutesObj = {};
-      route.versions._forEach((routeVersions, index) => {
+      route.versions.forEach((routeVersions, index) => {
         if (index < route.versions.length - 1) {
-          remainingVersions = remainingVersions._filter((version) => (
+          remainingVersions = remainingVersions.filter((version) => (
             !routeVersions.versions.includes(version)
           ));
         } else {
@@ -192,7 +230,7 @@ module.exports = (envVars) => {
           routeVersions.versions = remainingVersions;
         }
 
-        routeVersions.versions._forEach((versionNumber) => {
+        routeVersions.versions.forEach((versionNumber) => {
           if (params.controller[routeVersions.func]) {
             versionRoutesObj[versionNumber] = params.controller[routeVersions.func];
           } else {
@@ -209,7 +247,7 @@ module.exports = (envVars) => {
           let version = req.header('X-ApiVersion') || versions[versions.length - 1];
           if (!versionRoutesObj[version]) {
             if (version.match(/\d+/) || version.match(/\d+\.\d+/)) {
-              version = _.reverse(versions)._find((versionNumber) => (
+              version = _.reverse(versions).find((versionNumber) => (
                 versionNumber.substring(0, version.length) === version
               ));
 
@@ -237,15 +275,15 @@ module.exports = (envVars) => {
   fn.slugify = (string) => _.snakeCase(`${string}`);
 
   fn.slugifyEntries = (obj) => (
-    obj._map((value, key) => [fn.slugify(key), fn.slugify(value)])._fromPairs()
+    Object.fromEntries(obj.map((value, key) => [fn.slugify(key), fn.slugify(value)]))
   );
 
   fn.slugifyKeys = (obj) => (
-    obj._map((value, key) => [fn.slugify(key), value])._fromPairs()
+    Object.fromEntries(obj.map((value, key) => [fn.slugify(key), value]))
   );
 
   fn.slugifyValues = (obj) => (
-    obj._map((value, key) => [key, fn.slugify(value)])._fromPairs()
+    Object.fromEntries(obj.map((value, key) => [key, fn.slugify(value)]))
   );
 
   fn.waitUntil = async (condition, callback) => {

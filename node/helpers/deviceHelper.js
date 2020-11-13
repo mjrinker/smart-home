@@ -31,8 +31,8 @@ exports.getAliasIds = (nickname, parentPath = '') => {
 exports.getDeviceIdInfo = (deviceInfo, parentPath = '') => {
   if (_.isPlainObject(deviceInfo)) {
     if (deviceInfo.mfg_id) {
-      if (deviceInfo.mfg_id._isArray()) {
-        return deviceInfo.mfg_id._map((deviceId) => ({
+      if (Array.isArray(deviceInfo.mfg_id)) {
+        return deviceInfo.mfg_id.map((deviceId) => ({
           ...deviceInfo,
           id: deviceId,
         }));
@@ -45,8 +45,8 @@ exports.getDeviceIdInfo = (deviceInfo, parentPath = '') => {
     }
   }
 
-  if (deviceInfo._isArray()) {
-    return deviceInfo._flatMap((nickname) => exports.getAliasIds(nickname, parentPath));
+  if (Array.isArray(deviceInfo)) {
+    return deviceInfo.flatMap((nickname) => exports.getAliasIds(nickname, parentPath));
   }
 
   if (typeof deviceInfo === 'string') {
@@ -121,8 +121,8 @@ exports.performDeviceAction = async (devices, deviceData, fallback) => {
       }
     };
 
-    const actionValues = deviceData.actions._toPairs();
-    totalActions = actionValues._flatMap(([action, value]) => {
+    const actionValues = Object.entries(deviceData.actions);
+    totalActions = actionValues.flatMap((action, value) => {
       if (action === 'preset') {
         const preset = fn.slugifyKeys(deviceData.presets)[fn.slugify(value)];
         if (preset) {
@@ -130,7 +130,7 @@ exports.performDeviceAction = async (devices, deviceData, fallback) => {
             return [preset];
           }
 
-          return preset._keys();
+          return Object.keys(preset);
         }
 
         return [];
@@ -139,7 +139,7 @@ exports.performDeviceAction = async (devices, deviceData, fallback) => {
       return action;
     }).length;
 
-    await actionValues._forEach(async ([action, value]) => {
+    await Promise.all(actionValues.map((action, value) => (async ([action, value]) => {
       switch (action) {
         case 'off': {
           Device.turnOff().then((response) => actionCallback(response, action));
@@ -289,7 +289,7 @@ exports.performDeviceAction = async (devices, deviceData, fallback) => {
           });
         }
       }
-    });
+    })([action, value])));
   } else {
     console.error('Device not defined');
     errors.push({
@@ -308,13 +308,13 @@ exports.performDeviceAction = async (devices, deviceData, fallback) => {
 
 exports.performDeviceActions = async (deviceActions) => {
   try {
-    const actionList = deviceActions._flatMap((deviceAction) => {
-      if (deviceAction.actions._isArray()) {
-        return deviceAction.actions._map((actionObj) => actionObj.action);
+    const actionList = deviceActions.flatMap((deviceAction) => {
+      if (Array.isArray(deviceAction.actions)) {
+        return deviceAction.actions.map((actionObj) => actionObj.action);
       }
 
       if (_.isPlainObject(deviceAction.actions)) {
-        return deviceAction.actions._keys();
+        return Object.keys(deviceAction.actions);
       }
 
       return [];
@@ -343,16 +343,15 @@ exports.performDeviceActions = async (deviceActions) => {
       const deviceNickname = deviceActionCopy.nickname;
 
       if (deviceNickname.match(/^\*/)) {
-        const deviceType = deviceNickname.match(/^\*(.*)/)[1]._lowerCase();
-        moreDeviceActions.push(...deviceConfig._values()._filterMap(
+        const deviceType = deviceNickname.match(/^\*(.*)/)[1].toLowerCase();
+        fn.filterMap(moreDeviceActions.push(...Object.values(deviceConfig),
           (device) => (
-            device._isPlainObject && (!deviceType || device.type === deviceType)
+            _.isPlainObject(device) && (!deviceType || device.type === deviceType)
           ),
           (device) => ({
             nickname: device.name,
             actions: deviceActionCopy.actions,
-          }),
-        ));
+          })));
         return;
       }
 
@@ -389,7 +388,7 @@ exports.performDeviceActions = async (deviceActions) => {
 
       totalDevices += deviceIdsInfo.length;
 
-      await deviceIdsInfo._forEach(async (deviceIdInfo) => {
+      await Promise.all(deviceIdsInfo.map((deviceIdInfo) => (async (deviceIdInfo) => {
         const { platform } = deviceIdInfo;
         const deviceId = deviceIdInfo.mfg_id;
         let constructorParams = {};
@@ -420,17 +419,16 @@ exports.performDeviceActions = async (deviceActions) => {
           info: deviceIdInfo,
           actions: {},
           Device,
-          ...(devices._find((device) => device.id === deviceId) || {}),
+          ...(devices.find((device) => device.id === deviceId) || {}),
         };
 
-        if (deviceActionCopy.actions._isArray()) {
-          deviceActionCopy.actions = deviceActionCopy.actions
-            ._map((action) => [action.action, action.value])
-            ._fromPairs();
+        if (Array.isArray(deviceActionCopy.actions)) {
+          deviceActionCopy.actions = Object.fromEntries(deviceActionCopy.actions
+            .map((action) => [action.action, action.value]));
         }
 
         if (deviceIdInfo.timeBased) {
-          deviceActionCopy.actions = (await deviceActionCopy.actions._map(
+          deviceActionCopy.actions = Object.keys(await deviceActionCopy.actions.map(
             async (value, action) => {
               let actionSlug = fn.slugify(action);
               let valueCopy = value;
@@ -445,7 +443,7 @@ exports.performDeviceActions = async (deviceActions) => {
 
                 const timeBasedSchedules = deviceIdInfo.timeBased[timeAction];
                 if (timeBasedSchedules) {
-                  let scheduledPresetConfigKey = timeBasedSchedules._keys()._find(
+                  let scheduledPresetConfigKey = Object.keys(timeBasedSchedules).find(
                     (times) => {
                       const timesSplit = times.split('->');
                       const startTime = timesSplit[0];
@@ -454,7 +452,7 @@ exports.performDeviceActions = async (deviceActions) => {
                     },
                   );
 
-                  if (!scheduledPresetConfigKey && timeBasedSchedules._keys().includes('default')) {
+                  if (!scheduledPresetConfigKey && Object.keys(timeBasedSchedules).includes('default')) {
                     scheduledPresetConfigKey = 'default';
                   }
 
@@ -475,13 +473,13 @@ exports.performDeviceActions = async (deviceActions) => {
               }
               return [actionSlug, valueCopy];
             },
-          ))._fromPairs();
+          ));
         }
 
         deviceData.actions = deviceActionCopy.actions;
         exports.performDeviceAction(devices, deviceData, fallback).then((response) => {
-          const responseArray = response._isArray() ? [...response] : [response];
-          responseArray._forEach((responseObj) => {
+          const responseArray = Array.isArray(response) ? [...response] : [response];
+          responseArray.forEach((responseObj) => {
             if (responseObj.successes) {
               successes.push(...responseObj.successes);
             } else if (responseObj.errors) {
@@ -493,11 +491,11 @@ exports.performDeviceActions = async (deviceActions) => {
         }).catch((error) => {
           console.error(error);
         });
-      });
+      })(deviceIdInfo)));
     };
 
-    await deviceActions._forEach(deviceActionsLoopCallback);
-    await moreDeviceActions._forEach(deviceActionsLoopCallback);
+    await deviceActions.forEach(deviceActionsLoopCallback);
+    await moreDeviceActions.forEach(deviceActionsLoopCallback);
 
     return await fn.waitUntil(() => (deviceCounter >= totalDevices), () => {
       if (fallback) {
@@ -522,14 +520,14 @@ exports.performDeviceActions = async (deviceActions) => {
           };
         }
 
-        const status = errors._find((error) => error.status < 500) ? 400 : 500;
+        const status = errors.find((error) => error.status < 500) ? 400 : 500;
         return {
           success: false,
           status,
           code: 1,
           failed: errors,
-          error: errors._map((error) => error.error),
-          message: errors._map((error) => error.message),
+          error: errors.map((error) => error.error),
+          message: errors.map((error) => error.message),
         };
       }
 

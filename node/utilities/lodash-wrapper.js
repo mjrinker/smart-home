@@ -169,7 +169,7 @@ methods.String.forEach((methodName) => {
 
 const filterMap = (collection, filterCallback, mapCallback) => {
   const array = [];
-  collection._forEach((element, index) => {
+  collection.forEach((element, index) => {
     let condition = null;
     if (_.isFunction(filterCallback)) {
       condition = filterCallback(element, index);

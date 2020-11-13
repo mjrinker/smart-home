@@ -1,12 +1,13 @@
 const envVars = module.parent.exports;
 const {
+  _,
   fn,
   rooms,
 } = envVars;
 
 exports.getRoomsV1_0_0 = fn.asyncMw(async (req, res) => {
-  const roomsCopy = rooms._map((room) => {
-    const roomCopy = room._cloneDeep();
+  const roomsCopy = rooms.map((room) => {
+    const roomCopy = _.cloneDeep(room);
     roomCopy.names = [roomCopy.name];
     delete roomCopy.name;
     return roomCopy;

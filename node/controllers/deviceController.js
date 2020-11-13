@@ -2,6 +2,7 @@ const envVars = module.parent.exports;
 const deviceHelper = require('../helpers/deviceHelper');
 
 const {
+  _,
   deviceConfig,
   fetch,
   fn,
@@ -16,7 +17,7 @@ exports.performActions = fn.asyncMw(async (req, res) => {
 
 exports.getDeviceState = fn.asyncMw(async (req, res) => {
   const deviceNames = req.body || [];
-  if (!deviceNames._isArray() || deviceNames.length === 0) {
+  if (!Array.isArray(deviceNames) || deviceNames.length === 0) {
     return res.status(400).json({
       success: false,
       status: 400,
@@ -25,23 +26,22 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
     });
   }
 
-  const mfgIds = (await deviceNames._flatMap(async (deviceName) => {
+  const mfgIds = (await Promise.all(deviceNames.flatMap((deviceName) => (async (deviceName) => {
     const deviceInfo = deviceConfig[fn.slugify(deviceName)] || {};
 
     if (deviceName.match(/^\*/)) {
-      const deviceType = deviceName.match(/^\*(.*)/)[1]._lowerCase();
-      return deviceConfig._values()._filterMap(
+      const deviceType = deviceName.match(/^\*(.*)/)[1].toLowerCase();
+      return fn.filterMap(Object.values(deviceConfig),
         (device) => (
-          device._isPlainObject && (!deviceType || device.type === deviceType)
+          _.isPlainObject(device) && (!deviceType || device.type === deviceType)
         ),
-        (device) => device.mfg_id,
-      );
+        (device) => device.mfg_id);
     }
 
     let deviceIdsInfo = [];
     try {
       deviceIdsInfo = deviceHelper.getDeviceIdInfo(deviceInfo, deviceName);
-      deviceIdsInfo = deviceIdsInfo._uniqBy((deviceIdInfo) => `${deviceIdInfo.platform} - ${deviceIdInfo.id}`);
+      deviceIdsInfo = _.uniqBy(deviceIdsInfo, (deviceIdInfo) => `${deviceIdInfo.platform} - ${deviceIdInfo.id}`);
     } catch (error) {
       if (error.name === 'CIRCULAR_ALIAS') {
         return null;
@@ -52,14 +52,14 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
       return null;
     }
 
-    return deviceIdsInfo._map(async (deviceIdInfo) => {
+    return Promise.all(deviceIdsInfo.map((deviceIdInfo) => (async (deviceIdInfo) => {
       if (deviceIdInfo.platform === 'meross') {
         return deviceIdInfo.mfg_id;
       }
 
       return null;
-    });
-  }))._filter((deviceResponse) => deviceResponse)[0];
+    })(deviceIdInfo)));
+  })(deviceName)))).filter((deviceResponse) => deviceResponse)[0];
 
   const deviceStatesResponse = await fetch(`${merossFullURL}/devices/state`, {
     method: 'POST',

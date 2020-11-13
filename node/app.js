@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const _ = require('lodash');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const delay = require('delay');
@@ -10,7 +11,6 @@ const { getSunrise, getSunset } = require('sunrise-sunset-js');
 const path = require('path');
 const { Sequelize, DataTypes, Model } = require('sequelize');
 
-const _ = require('./utilities/lodash-wrapper');
 const getFunctions = require('./utilities/functions');
 const getDataFunctions = require('./utilities/data');
 
@@ -102,7 +102,7 @@ let envVars = {};
     sequelize,
     Thermostat,
     TuyaDevice,
-    versions: ['1.0.0', '2.0.0', '2.1.0', '2.1.1']._sortBy(),
+    versions: _.sortBy(['1.0.0', '2.0.0', '2.1.0', '2.1.1']),
   };
 
   let fn = getFunctions(envVars);
@@ -155,7 +155,7 @@ let envVars = {};
   const routesDir = path.join(__dirname, 'routes');
   const ignoreRoutes = {};
   fs.readdir(routesDir, (err, files) => {
-    files._forEach((file) => {
+    files.forEach((file) => {
       if (!ignoreRoutes[file.replace(/\.js$/, '')]) {
         // eslint-disable-next-line import/no-dynamic-require, global-require
         require(path.join(routesDir, file));
