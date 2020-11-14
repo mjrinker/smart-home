@@ -58,17 +58,17 @@ class MerossDevice {
       return {
         success: true,
         device: {
-          nickname: this.deviceDef.name,
+          nickname: this.deviceDef.devName,
           data: {
             online: true,
             state: false,
-            light_state: {},
+            light_state: null,
           },
-          name: this.deviceDef.name,
-          icon: null,
-          id: this.deviceDef.mfg_id,
-          dev_type: this.deviceDef.type,
-          ha_type: this.deviceDef.type,
+          name: this.deviceDef.devName,
+          icon: this.deviceDef.userDevIcon || this.deviceDef.devIconId,
+          id: this.deviceDef.uuid,
+          dev_type: this.deviceDef.deviceType,
+          ha_type: this.deviceDef.deviceType,
         },
       };
     } catch (error) {
@@ -104,6 +104,13 @@ class MerossDevice {
     } catch (error) {
       return false;
     }
+  }
+
+  async getState() {
+    return {
+      online: await this.isOnline(),
+      state: await this.isOn(),
+    };
   }
 
   async getSkills() {

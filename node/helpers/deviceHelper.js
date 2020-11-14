@@ -10,7 +10,6 @@ const {
   Devices,
   deviceTypeClassMap,
   fn,
-  fs,
   Light,
   Thermostat,
 } = envVars;
@@ -77,7 +76,7 @@ exports.getTuyaDevices = async () => tuyaAPI.find();
 
 exports.isOn = async (deviceData) => deviceData.Device.isOn();
 
-exports.performDeviceAction = async (devices, deviceData, fallback) => {
+exports.performDeviceAction = async (deviceData) => {
   const { Device } = deviceData;
   const successes = [];
   const errors = [];
@@ -269,7 +268,7 @@ exports.performDeviceAction = async (devices, deviceData, fallback) => {
             actions: preset,
           };
 
-          exports.performDeviceAction(devices, presetDeviceData, fallback).then((response) => {
+          exports.performDeviceAction(presetDeviceData).then((response) => {
             successes.push(...response.successes);
             errors.push(...response.errors);
           });
@@ -306,28 +305,6 @@ exports.performDeviceAction = async (devices, deviceData, fallback) => {
 
 exports.performDeviceActions = async (deviceActions) => {
   try {
-    const actionList = deviceActions.flatMap((deviceAction) => {
-      if (Array.isArray(deviceAction.actions)) {
-        return deviceAction.actions.map((actionObj) => actionObj.action);
-      }
-
-      if (_.isPlainObject(deviceAction.actions)) {
-        return Object.keys(deviceAction.actions);
-      }
-
-      return [];
-    });
-
-    let fallback = false;
-    let devices = await exports.getDevices();
-    if (devices) {
-      fs.writeFileSync('./config/devices.json', JSON.stringify(devices));
-    } else if (actionList.includes('toggle')) {
-      fallback = true;
-      // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved, global-require
-      devices = require('./config/devices.json'); // TODO stop using a file for this
-    }
-
     const errors = [];
     const successes = [];
 
@@ -391,7 +368,7 @@ exports.performDeviceActions = async (deviceActions) => {
         const deviceId = deviceIdInfo.mfg_id;
         let Device;
         if (platform === 'tuya') {
-          const constructorParams = { tuyaAPI, deviceId };
+          const constructorParams = { api: tuyaAPI, deviceId };
           const DeviceType = _.get(deviceTypeClassMap, [platform, deviceIdInfo.type], null);
           if (!DeviceType) {
             errors.push({
@@ -428,10 +405,7 @@ exports.performDeviceActions = async (deviceActions) => {
           info: deviceIdInfo,
           actions: {},
           Device,
-          data: {
-            online: true,
-          },
-          ...(devices.find((device) => device.id === deviceId) || {}),
+          data: await Device.getState(),
         };
 
         if (Array.isArray(deviceActionCopy.actions)) {
@@ -490,7 +464,7 @@ exports.performDeviceActions = async (deviceActions) => {
         }
 
         deviceData.actions = deviceActionCopy.actions;
-        exports.performDeviceAction(devices, deviceData, fallback).then((response) => {
+        exports.performDeviceAction(deviceData).then((response) => {
           const responseArray = Array.isArray(response) ? [...response] : [response];
           responseArray.forEach((responseObj) => {
             if (responseObj.successes) {
@@ -511,10 +485,6 @@ exports.performDeviceActions = async (deviceActions) => {
     await moreDeviceActions.forEach(deviceActionsLoopCallback);
 
     return await fn.waitUntil(() => (deviceCounter >= totalDevices), () => {
-      if (fallback) {
-        fs.writeFileSync('./config/devices.json', JSON.stringify(devices));
-      }
-
       if (successes.length > 0) {
         return {
           success: true,

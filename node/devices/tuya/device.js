@@ -26,7 +26,15 @@ class TuyaDevice {
   }
 
   async isOn() {
-    return JSON.parse((await this.getSkills()).state);
+    return !!(await this.api.find({ id: this.deviceId }))?.data?.state;
+  }
+
+  async isOnline() {
+    return !!(await this.api.find({ id: this.deviceId }))?.data?.online;
+  }
+
+  async getState() {
+    return (await this.api.find({ id: this.deviceId }))?.data || {};
   }
 
   async toggle() {
