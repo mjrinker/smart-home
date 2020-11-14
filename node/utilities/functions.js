@@ -93,6 +93,10 @@ module.exports = (envVars) => {
     return array;
   };
 
+  fn.filterObjectProperties = (obj, props) => (
+    Object.fromEntries(props.map((prop) => [prop, _.get(obj, prop)]))
+  );
+
   fn.getMilliseconds = (timeString) => {
     const timeUnits = timeString.replace(/([a-z]+)/gi, '$1<!--DELIMITER-->').split('<!--DELIMITER-->');
     return timeUnits.map((timeUnit) => {
