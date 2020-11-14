@@ -2,17 +2,16 @@ const envVars = module.parent.parent.exports;
 
 const {
   _,
-  api,
+  tuyaAPI,
   Bulb,
   Climate,
   colors,
   deviceConfig,
+  Devices,
   deviceTypeClassMap,
-  fetch,
   fn,
   fs,
   Light,
-  merossFullURL,
   Thermostat,
 } = envVars;
 
@@ -60,22 +59,21 @@ exports.getDevices = async () => [
   ...(await exports.getTuyaDevices() || []), ...(await exports.getMerossDevices() || []),
 ];
 
-exports.getMerossDevices = async () => {
-  const response = await (await fetch(`${merossFullURL}/devices`, {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-    },
-  })).text();
+exports.getMerossDevices = async () => Object.values(Devices).map(({ deviceDef }) => ({
+  nickname: deviceDef.name,
+  data: {
+    online: true,
+    state: true,
+    light_state: {},
+  },
+  name: deviceDef.name,
+  icon: null,
+  id: deviceDef.mfg_id,
+  dev_type: deviceDef.type,
+  ha_type: deviceDef.type,
+}));
 
-  try {
-    return JSON.parse(response);
-  } catch (error) {
-    return [response];
-  }
-};
-
-exports.getTuyaDevices = async () => api.find();
+exports.getTuyaDevices = async () => tuyaAPI.find();
 
 exports.isOn = async (deviceData) => deviceData.Device.isOn();
 
@@ -122,7 +120,7 @@ exports.performDeviceAction = async (devices, deviceData, fallback) => {
     };
 
     const actionValues = Object.entries(deviceData.actions);
-    totalActions = actionValues.flatMap((action, value) => {
+    totalActions = actionValues.flatMap(([action, value]) => {
       if (action === 'preset') {
         const preset = fn.slugifyKeys(deviceData.presets)[fn.slugify(value)];
         if (preset) {
@@ -139,7 +137,7 @@ exports.performDeviceAction = async (devices, deviceData, fallback) => {
       return action;
     }).length;
 
-    await Promise.all(actionValues.map((action, value) => (async ([action, value]) => {
+    await Promise.all(actionValues.map(([action, value]) => (async ([action, value]) => {
       switch (action) {
         case 'off': {
           Device.turnOff().then((response) => actionCallback(response, action));
@@ -391,34 +389,48 @@ exports.performDeviceActions = async (deviceActions) => {
       await Promise.all(deviceIdsInfo.map((deviceIdInfo) => (async (deviceIdInfo) => {
         const { platform } = deviceIdInfo;
         const deviceId = deviceIdInfo.mfg_id;
-        let constructorParams = {};
+        let Device;
         if (platform === 'tuya') {
-          constructorParams = { api, deviceId };
+          const constructorParams = { tuyaAPI, deviceId };
+          const DeviceType = _.get(deviceTypeClassMap, [platform, deviceIdInfo.type], null);
+          if (!DeviceType) {
+            errors.push({
+              success: false,
+              status: 500,
+              error: 'DEVICE_TYPE_NOT_DEFINED',
+              message: `Cannot match device type ${deviceIdsInfo.type} to a class`,
+            });
+
+            deviceCounter += 1;
+            return;
+          }
+
+          Device = new DeviceType(constructorParams);
         } else if (platform === 'meross') {
-          constructorParams = { url: merossFullURL, deviceId };
+          Device = Devices[deviceId].Device;
+          const { deviceDef } = Devices[deviceId];
+          if (!Device) {
+            errors.push({
+              success: false,
+              status: 500,
+              error: 'DEVICE_TYPE_NOT_DEFINED',
+              message: `Cannot match device type ${deviceDef.deviceType} to a class`,
+            });
+
+            deviceCounter += 1;
+            return;
+          }
         }
 
-        const DeviceType = _.get(deviceTypeClassMap, [platform, deviceIdInfo.type], null);
-
-        if (!DeviceType) {
-          errors.push({
-            success: false,
-            status: 500,
-            error: 'DEVICE_TYPE_NOT_DEFINED',
-            message: `Cannot match device type ${deviceIdsInfo.type} to a class`,
-          });
-
-          deviceCounter += 1;
-          return;
-        }
-
-        const Device = new DeviceType(constructorParams);
         const deviceData = {
           nickname: deviceNickname,
           presets: deviceIdInfo.presets,
           info: deviceIdInfo,
           actions: {},
           Device,
+          data: {
+            online: true,
+          },
           ...(devices.find((device) => device.id === deviceId) || {}),
         };
 
@@ -427,53 +439,54 @@ exports.performDeviceActions = async (deviceActions) => {
             .map((action) => [action.action, action.value]));
         }
 
-        if (deviceIdInfo.timeBased) {
-          deviceActionCopy.actions = Object.keys(await deviceActionCopy.actions.map(
-            async (value, action) => {
-              let actionSlug = fn.slugify(action);
-              let valueCopy = value;
-              if ((deviceIdInfo.timeBased[actionSlug] || (actionSlug === 'toggle' && deviceIdInfo.timeBased.on))) {
-                let timeAction = actionSlug;
-                if (actionSlug === 'toggle') {
-                  const isOn = await exports.isOn(deviceData);
-                  if (!isOn) {
-                    timeAction = 'on';
-                  }
-                }
-
-                const timeBasedSchedules = deviceIdInfo.timeBased[timeAction];
-                if (timeBasedSchedules) {
-                  let scheduledPresetConfigKey = Object.keys(timeBasedSchedules).find(
-                    (times) => {
-                      const timesSplit = times.split('->');
-                      const startTime = timesSplit[0];
-                      const endTime = timesSplit[1];
-                      return times !== 'default' && fn.isInTimeRange(startTime, endTime);
-                    },
-                  );
-
-                  if (!scheduledPresetConfigKey && Object.keys(timeBasedSchedules).includes('default')) {
-                    scheduledPresetConfigKey = 'default';
+        if (deviceIdInfo.timeBased && deviceActionCopy.timeBased !== false) {
+          deviceActionCopy.actions = Object.fromEntries(
+            await Promise.all(Object.entries(deviceActionCopy.actions).map(([action, value]) => (
+              async ([action, value]) => {
+                let actionSlug = fn.slugify(action);
+                let valueCopy = value;
+                if ((deviceIdInfo.timeBased[actionSlug] || (actionSlug === 'toggle' && deviceIdInfo.timeBased.on))) {
+                  let timeAction = actionSlug;
+                  if (actionSlug === 'toggle') {
+                    const isOn = await exports.isOn(deviceData);
+                    if (!isOn) {
+                      timeAction = 'on';
+                    }
                   }
 
-                  const scheduledPresetConfig = {
-                    times: scheduledPresetConfigKey,
-                    presetName: timeBasedSchedules[scheduledPresetConfigKey],
-                  };
+                  const timeBasedSchedules = deviceIdInfo.timeBased[timeAction];
+                  if (timeBasedSchedules) {
+                    let scheduledPresetConfigKey = Object.keys(timeBasedSchedules).find(
+                      (times) => {
+                        const timesSplit = times.split('->');
+                        const startTime = timesSplit[0];
+                        const endTime = timesSplit[1];
+                        return times !== 'default' && fn.isInTimeRange(startTime, endTime);
+                      },
+                    );
 
-                  if (scheduledPresetConfig) {
-                    const presetSlug = fn.slugify(scheduledPresetConfig.presetName);
-                    const scheduledPreset = fn.slugifyKeys(deviceIdInfo.presets)[presetSlug];
-                    if (scheduledPreset) {
-                      actionSlug = 'preset';
-                      valueCopy = scheduledPresetConfig.presetName;
+                    if (!scheduledPresetConfigKey && Object.keys(timeBasedSchedules).includes('default')) {
+                      scheduledPresetConfigKey = 'default';
+                    }
+
+                    const scheduledPresetConfig = {
+                      times: scheduledPresetConfigKey,
+                      presetName: timeBasedSchedules[scheduledPresetConfigKey],
+                    };
+
+                    if (scheduledPresetConfig) {
+                      const presetSlug = fn.slugify(scheduledPresetConfig.presetName);
+                      const scheduledPreset = fn.slugifyKeys(deviceIdInfo.presets)[presetSlug];
+                      if (scheduledPreset) {
+                        actionSlug = 'preset';
+                        valueCopy = scheduledPresetConfig.presetName;
+                      }
                     }
                   }
                 }
-              }
-              return [actionSlug, valueCopy];
-            },
-          ));
+                return [actionSlug, valueCopy];
+              })([action, value]))),
+          );
         }
 
         deviceData.actions = deviceActionCopy.actions;

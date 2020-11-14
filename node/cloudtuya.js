@@ -1,5 +1,6 @@
-const request = require('request');
-const debug = require('debug')('cloudtuya');
+const debug = require('debug')('[TUYA]');
+const fetch = require('node-fetch');
+const { URLSearchParams } = require('url');
 // A module that uses the tuya cloud api, to get and set device states
 // All you need is to put your tuya/smartlife email and pass
 // Into the keys.json file
@@ -55,7 +56,7 @@ class CloudTuya {
 
   /**
    *
-   * @param {Object} options requst options
+   * @param {Object} options request options
    */
   async post(options) {
     // Set to empty object if undefined
@@ -65,14 +66,25 @@ class CloudTuya {
 
     const config = (options) || {};
     config.method = 'POST';
+
     return new Promise((resolve, reject) => {
-      request(config, (err, response, body) => {
-        if (!err && response.statusCode === 200) {
-          debug(body);
-          resolve(body);
-        } else if (err) {
-          reject(err);
+      fetch(config.uri, config).then((response) => {
+        if (response.status === 200) {
+          response.text().then((body) => {
+            try {
+              const jsonBody = JSON.parse(body);
+              debug(jsonBody);
+              resolve(jsonBody);
+            } catch (e) {
+              debug(body);
+              resolve(body);
+            }
+          });
+        } else {
+          reject(new Error(response.statusText));
         }
+      }).catch((err) => {
+        reject(err);
       });
     });
   }
@@ -101,7 +113,7 @@ class CloudTuya {
       uri,
       method: 'POST',
       headers,
-      json: data,
+      body: JSON.stringify(data),
     };
     const { payload: { devices } } = await this.post(postConfig);
     this.devices = devices;
@@ -189,7 +201,7 @@ class CloudTuya {
       uri,
       method: 'POST',
       headers,
-      json: data,
+      body: JSON.stringify(data),
     };
     debug(postConfig);
     const setProgress = await this.post(postConfig);
@@ -205,15 +217,20 @@ class CloudTuya {
     // Set userName pass biz
     const data = config.core || this.core;
     data.from = 'tuya';
+
+    const params = new URLSearchParams();
+    Object.entries(data).forEach(([key, value]) => {
+      params.append(key, value);
+    });
+
     const postConfig = {
       uri,
       method: 'POST',
       headers,
-      form: data,
+      body: params,
     };
 
-    let tokens = await this.post(postConfig);
-    tokens = JSON.parse(tokens);
+    const tokens = await this.post(postConfig);
     this.tokens = tokens;
     this.accessToken = tokens.access_token;
     debug(tokens);

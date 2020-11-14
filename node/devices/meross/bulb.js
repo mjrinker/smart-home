@@ -1,41 +1,103 @@
-const fetch = require('node-fetch');
+const { promisify } = require('util');
 const MerossDevice = require('./device');
 
+const retrieveColor = (response) => {
+  const colorResponse = response?.all?.digest?.light?.rgb;
+  return colorResponse ? ((colorResponse) + 0xFFFFFF + 1).toString(16).substring(1) : null;
+};
+
 class Bulb extends MerossDevice {
+  constructor(options) {
+    super(options);
+    this.controlLight = promisify(this.device.controlLight).bind(this.device);
+  }
+
   async setLightValues(features = { brightness: null, color: null, temperature: null }) {
-    const action = [
-      ...(features.brightness ? ['brightness'] : []),
-      ...(features.color ? ['color'] : []),
-      ...(features.temperature ? ['temperature'] : []),
-    ].join(',');
+    let mode = 0;
+    if (features.color) {
+      mode += 1;
+    }
 
-    const value = [
-      ...(features.brightness ? [features.brightness] : []),
-      ...(features.color ? [features.color] : []),
-      ...(features.temperature ? [features.temperature] : []),
-    ].join(',').replace(/#([0-9a-f]{6})/gi, '$1');
+    if (features.temperature) {
+      mode += 2;
+    }
 
-    return fetch(`${this.url}/device/${this.deviceId}/${action}?value=${value}`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-    }).then((response) => response.text().then((text) => {
-      try {
-        return JSON.parse(text);
-      } catch (error) {
-        return text;
-      }
-    }));
+    if (features.brightness) {
+      mode += 4;
+    }
+
+    if (mode === 3) {
+      const error = new Error('RGB_TEMPERATURE mode not supported');
+      error.name = 'ModeNotSupportedError';
+      throw error;
+    }
+
+    if (mode === 7) {
+      const error = new Error('RGB_TEMPERATURE_LUMINANCE mode not supported');
+      error.name = 'ModeNotSupportedError';
+      throw error;
+    }
+
+    const lightValues = {
+      capacity: mode, // 1 = RGB, 2 = TEMPERATURE, 3 = (not supported), 4 = LUMINANCE, 5 = RGB_LUMINANCE, 6 = TEMPERATURE_LUMINANCE
+      channel: 0,
+      rgb: parseInt(features.color, 16) || await this.getColor(),
+      temperature: features.temperature || await this.getColorTemperature(),
+      luminance: features.brightness || await this.getBrightness(),
+    };
+
+    try {
+      await this.controlLight(lightValues);
+      return {
+        success: true,
+        device: {
+          nickname: this.deviceDef.name,
+          data: {
+            online: true,
+            state: true,
+            light_state: lightValues,
+          },
+          name: this.deviceDef.name,
+          icon: null,
+          id: this.deviceDef.mfg_id,
+          dev_type: this.deviceDef.type,
+          ha_type: this.deviceDef.type,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        status: 500,
+        error: 'LIGHT_CONTROL_ERROR',
+        message: `Cannot change light values: mfg_id ${this.deviceId}`,
+      };
+    }
+  }
+
+  async getLightValues() {
+    try {
+      const response = await this.getSystemAllData();
+      return {
+        brightness: response?.all?.digest?.light?.luminance || null,
+        color_temp: response?.all?.digest?.light?.temperature || null,
+        color: retrieveColor(response),
+      };
+    } catch (error) {
+      return false;
+    }
   }
 
   async supportsBrightness() {
-    return this.supportsFeature('brightness');
+    return this.supportsFeature('Appliance.Control.Light', ({ capacity }) => [4, 5, 6, 7].includes(capacity));
   }
 
   async getBrightness() {
-    return JSON.parse((await this.getSkills()).brightness);
+    try {
+      const response = await this.getSystemAllData();
+      return response?.all?.digest?.light?.luminance || null;
+    } catch (error) {
+      return false;
+    }
   }
 
   async setBrightness(value) {
@@ -43,11 +105,16 @@ class Bulb extends MerossDevice {
   }
 
   async supportsColor() {
-    return this.supportsFeature('color');
+    return this.supportsFeature('Appliance.Control.Light', ({ capacity }) => [1, 5, 7].includes(capacity));
   }
 
   async getColor() {
-    return (await this.getSkills()).color;
+    try {
+      const response = await this.getSystemAllData();
+      return retrieveColor(response);
+    } catch (error) {
+      return false;
+    }
   }
 
   async setColor(value) {
@@ -55,15 +122,21 @@ class Bulb extends MerossDevice {
   }
 
   async supportsColorTemperature() {
-    return this.supportsFeature('color_temp');
+    return this.supportsFeature('Appliance.Control.Light', ({ capacity }) => [2, 6, 7].includes(capacity));
   }
 
   async getColorTemperature() {
-    return (await this.getSkills()).color_temp;
+    try {
+      const response = await this.getSystemAllData();
+      return response?.all?.digest?.light?.temperature || null;
+    } catch (error) {
+      return false;
+    }
   }
 
   async setColorTemperature(value) {
     return this.setLightValues({ temperature: value });
   }
 }
+
 module.exports = Bulb;

@@ -438,6 +438,9 @@ async def main():
     for device in manager.find_devices():
         await device.async_update()
 
+    for device in manager.find_devices():
+        print(device.name, device.uuid)
+
     api.add_routes([web.get('/quit', quit_api),
                     web.get('/devices', get_devices),
                     web.get('/device/{uuid}', get_device),

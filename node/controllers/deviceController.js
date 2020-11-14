@@ -4,9 +4,8 @@ const deviceHelper = require('../helpers/deviceHelper');
 const {
   _,
   deviceConfig,
-  fetch,
+  Devices,
   fn,
-  merossFullURL,
 } = envVars;
 
 exports.performActions = fn.asyncMw(async (req, res) => {
@@ -61,31 +60,20 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
     })(deviceIdInfo)));
   })(deviceName)))).filter((deviceResponse) => deviceResponse)[0];
 
-  const deviceStatesResponse = await fetch(`${merossFullURL}/devices/state`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(mfgIds),
-  });
-
-  let deviceStateResponseBody = await deviceStatesResponse.text();
-
-  try {
-    deviceStateResponseBody = JSON.parse(deviceStateResponseBody);
-    deviceStateResponseBody = deviceStateResponseBody.map((device) => ({
-      ...device,
-      name: fn.slugify(device.name),
-    }));
-  } catch (e) {
-    // do nothing
-  }
-
-  return res.status(deviceStatesResponse.status).json({
-    success: deviceStatesResponse.status < 400,
-    status: deviceStatesResponse.status,
-    code: Number(deviceStatesResponse.status >= 400),
-    devices: deviceStateResponseBody || [],
+  return res.status(200).json({
+    success: true,
+    status: 200,
+    code: 0,
+    devices: await Promise.all(mfgIds.map((mfgId) => (async (mfgId) => {
+      const { deviceDef, Device } = Devices[mfgId];
+      return {
+        name: deviceDef.devName,
+        online: await Device.isOnline(),
+        state: await Device.isOn(),
+        ...(await Device.supportsLightControl() ? {
+          light_state: await Device.getLightValues(),
+        } : {}),
+      };
+    })(mfgId))),
   });
 });

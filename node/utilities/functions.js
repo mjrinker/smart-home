@@ -275,15 +275,17 @@ module.exports = (envVars) => {
   fn.slugify = (string) => _.snakeCase(`${string}`);
 
   fn.slugifyEntries = (obj) => (
-    Object.fromEntries(obj.map((value, key) => [fn.slugify(key), fn.slugify(value)]))
+    Object.fromEntries(
+      Object.entries(obj).map(([key, value]) => [fn.slugify(key), fn.slugify(value)]),
+    )
   );
 
   fn.slugifyKeys = (obj) => (
-    Object.fromEntries(obj.map((value, key) => [fn.slugify(key), value]))
+    Object.fromEntries(Object.entries(obj).map(([key, value]) => [fn.slugify(key), value]))
   );
 
   fn.slugifyValues = (obj) => (
-    Object.fromEntries(obj.map((value, key) => [key, fn.slugify(value)]))
+    Object.fromEntries(Object.entries(obj).map(([key, value]) => [key, fn.slugify(value)]))
   );
 
   fn.waitUntil = async (condition, callback) => {

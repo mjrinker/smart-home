@@ -8,11 +8,13 @@ const express = require('express');
 const fetch = require('node-fetch');
 const fs = require('fs');
 const { getSunrise, getSunset } = require('sunrise-sunset-js');
+const MerossCloud = require('meross-cloud');
 const path = require('path');
 const { Sequelize, DataTypes, Model } = require('sequelize');
 
 const getFunctions = require('./utilities/functions');
 const getDataFunctions = require('./utilities/data');
+const merossHelper = require('./helpers/merossHelper');
 
 const CloudTuya = require('./cloudtuya');
 const TuyaDevice = require('./devices/tuya/device');
@@ -36,9 +38,6 @@ let envVars = {};
   // STEP 1: make connections
   const app = express();
   const port = process.env.PORT;
-  const merossURL = 'localhost';
-  const merossPort = process.env.MEROSS_PORT;
-  const merossFullURL = `http://${merossURL}:${merossPort}`; // TODO Integrate Meross fully into node (stop using Python API)
 
   const location = {
     lat: parseFloat(process.env.LAT),
@@ -59,7 +58,13 @@ let envVars = {};
 
   await sequelize.authenticate();
 
-  const api = new CloudTuya({
+  const merossAPI = new MerossCloud({
+    email: process.env.MEROSS_USERNAME,
+    password: process.env.MEROSS_PASSWORD,
+    logger: () => {},
+  });
+
+  const tuyaAPI = new CloudTuya({
     userName: process.env.TUYA_USERNAME,
     password: process.env.TUYA_PASSWORD,
     bizType: process.env.BIZ_TYPE,
@@ -68,7 +73,7 @@ let envVars = {};
   });
 
   try {
-    await api.login();
+    await tuyaAPI.login();
     console.log('Successfully authenticated with CloudTuya');
   } catch (error) {
     console.error('Cannot authenticate with CloudTuya');
@@ -78,7 +83,6 @@ let envVars = {};
   // STEP 2: Add essential envVars
   envVars = {
     _,
-    api,
     app,
     Bulb,
     Climate,
@@ -93,14 +97,13 @@ let envVars = {};
     getSunset,
     Light,
     location,
+    merossAPI,
     MerossDevice,
-    merossFullURL,
-    merossPort,
-    merossURL,
     Model,
     path,
     sequelize,
     Thermostat,
+    tuyaAPI,
     TuyaDevice,
     versions: _.sortBy(['1.0.0', '2.0.0', '2.1.0', '2.1.1']),
   };
@@ -127,14 +130,55 @@ let envVars = {};
     },
     meross: {
       bulb: Bulb,
+      msl120: Bulb,
+      msl120a: Bulb,
+      msl120b: Bulb,
+      msl120c: Bulb,
+      msl120d: Bulb,
       thermostat: Thermostat,
     },
   };
 
-  // STEP 4: Add remaining envVars
+  // STEP 4: Initialize device listeners
+  const Devices = {};
+
+  merossAPI.on('deviceInitialized', (deviceId, deviceDef, device) => {
+    device.on('data', (namespace, payload) => {
+      switch (namespace) {
+        case 'Appliance.Control.ToggleX': {
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    });
+  });
+
+  merossAPI.on('deviceInitialized', (deviceId, deviceDef, device) => {
+    device.on('connected', () => {
+      const DeviceType = _.get(deviceTypeClassMap, ['meross', deviceDef.deviceType], null);
+      Devices[deviceId] = {
+        device,
+        deviceDef,
+        Device: new DeviceType({ deviceId, device, deviceDef }),
+      };
+    });
+  });
+
+  merossAPI.connect((error) => {
+    if (error) {
+      console.error(`Couldn't connect to Meross: ${error}`);
+    } else {
+      console.info('Successfully authenticated with Meross');
+    }
+  });
+
+  // STEP 5: Add remaining envVars
 
   envVars.colors = colors;
   envVars.deviceConfig = deviceConfig;
+  envVars.Devices = Devices;
   envVars.deviceTypeClassMap = deviceTypeClassMap;
   envVars.models = models;
   envVars.modelsBy = modelsBy;
@@ -146,7 +190,7 @@ let envVars = {};
 
   module.exports = envVars;
 
-  // STEP 5: Set routes
+  // STEP 6: Set routes
   app.use(cookieParser());
 
   app.use(bodyParser.urlencoded({ extended: true }));
@@ -163,6 +207,18 @@ let envVars = {};
     });
   });
 
-  // STEP 6: Start server
+  process.on('SIGINT', () => {
+    merossHelper.logout(merossAPI, (err) => {
+      if (err && !(`${err.code} ${err.name}`.match(/1019|1022|1301/g))) {
+        console.error('Unable to log out of Meross', err);
+        return;
+      }
+
+      console.log('Logged out of Meross');
+      process.exit();
+    });
+  });
+
+  // STEP 7: Start server
   app.listen(port, () => console.log(`Smart Home REST Server started on port: ${port}`));
 })();
