@@ -105,7 +105,7 @@ let envVars = {};
     Thermostat,
     tuyaAPI,
     TuyaDevice,
-    versions: _.sortBy(['1.0.0', '2.0.0', '2.1.0', '2.1.1']),
+    versions: _.sortBy(['1.0.0', '2.0.0', '2.1.0', '2.1.1', '2.2.0']),
   };
 
   let fn = getFunctions(envVars);
