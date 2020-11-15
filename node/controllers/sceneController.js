@@ -3,12 +3,11 @@ const deviceHelper = require('../helpers/deviceHelper');
 
 const {
   fn,
-  scenes,
 } = envVars;
 
 exports.playScene = fn.asyncMw(async (req, res) => {
   const sceneName = fn.slugify(req.params.sceneName);
-  const scene = scenes[sceneName];
+  const scene = global.scenes[sceneName];
   if (!scene) {
     res.status(404).json({
       success: false,

@@ -3,7 +3,6 @@ const deviceHelper = require('../helpers/deviceHelper');
 
 const {
   _,
-  deviceConfig,
   Devices,
   fn,
 } = envVars;
@@ -26,11 +25,11 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
   }
 
   const mfgIds = (await Promise.all(deviceNames.flatMap((deviceName) => (async (deviceName) => {
-    const deviceInfo = deviceConfig[fn.slugify(deviceName)] || {};
+    const deviceInfo = global.deviceConfig[fn.slugify(deviceName)] || {};
 
     if (deviceName.match(/^\*/)) {
       const deviceType = deviceName.match(/^\*(.*)/)[1].toLowerCase();
-      return fn.filterMap(Object.values(deviceConfig),
+      return fn.filterMap(Object.values(global.deviceConfig),
         (device) => (
           _.isPlainObject(device) && (!deviceType || device.type === deviceType)
         ),

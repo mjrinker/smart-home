@@ -1,3 +1,5 @@
+const constants = require('../helpers/constants');
+
 module.exports = (envVars) => {
   const returnObj = {};
 
@@ -158,29 +160,17 @@ module.exports = (envVars) => {
     ))
   );
 
-  returnObj.getRoomsConfig = (modelsBy) => {
-    const deviceProps = ['id', 'mfg_id', 'name', 'label', 'platform', 'type'];
-    return _.sortBy(Object.values(modelsBy.Room.id), '0.order').flatMap((roomsById) => (
-      roomsById.map((room) => ({
-        id: room.id,
-        label: room.label,
-        name: room.name,
-        actions: [
-          {
-            action: 'off',
-            value: true,
-          },
-          {
-            action: 'on',
-            value: true,
-          },
-        ],
-        devices: modelsBy.Device.room_id[room.id].map((device) => (
-          fn.filterObjectProperties(device, deviceProps)
-        )),
-      }))
-    ));
-  };
+  returnObj.getRoomsConfig = (modelsBy) => _.sortBy(Object.values(modelsBy.Room.id), '0.order').flatMap((roomsById) => (
+    roomsById.map((room) => ({
+      id: room.id,
+      label: room.label,
+      name: room.name,
+      actions: constants.roomActions,
+      devices: modelsBy.Device.room_id[room.id]?.map((device) => (
+        fn.filterObjectProperties(device, constants.deviceProps)
+      )) || [],
+    }))
+  ));
 
   returnObj.getScenesConfig = (modelsBy) => (
     Object.fromEntries(Object.entries(modelsBy.Scene.name).flatMap(([sceneName, scenesByName]) => (

@@ -251,7 +251,7 @@ module.exports = (envVars) => {
           let version = req.header('X-ApiVersion') || versions[versions.length - 1];
           if (!versionRoutesObj[version]) {
             if (version.match(/\d+/) || version.match(/\d+\.\d+/)) {
-              version = _.reverse(versions).find((versionNumber) => (
+              version = _.reverse([...versions]).find((versionNumber) => (
                 versionNumber.substring(0, version.length) === version
               ));
 

@@ -20,6 +20,42 @@ const routeList = [
       { versions: envVars.versions, func: 'getRooms' },
     ],
   },
+  {
+    path: '/:roomId',
+    method: 'get',
+    controller: 'roomController',
+    auth: false, // TODO set this to true
+    versions: [
+      { versions: ['2.2.0'], func: 'getRoom' },
+    ],
+  },
+  {
+    path: '/',
+    method: 'post',
+    controller: 'roomController',
+    auth: false, // TODO set this to true
+    versions: [
+      { versions: ['2.2.0'], func: 'createRoom' },
+    ],
+  },
+  {
+    path: '/:roomId',
+    method: 'put',
+    controller: 'roomController',
+    auth: false, // TODO set this to true
+    versions: [
+      { versions: ['2.2.0'], func: 'updateRoom' },
+    ],
+  },
+  {
+    path: '/:roomId/reassignDevices',
+    method: 'put',
+    controller: 'roomController',
+    auth: false, // TODO set this to true
+    versions: [
+      { versions: ['2.2.0'], func: 'reassignRoomDevices' },
+    ],
+  },
 ];
 
 envVars.fn.setRoutes({

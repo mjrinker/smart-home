@@ -1,17 +1,17 @@
 const envVars = module.parent.parent.exports;
+const constants = require('./constants');
 
 const {
   _,
-  tuyaAPI,
   Bulb,
   Climate,
-  colors,
-  deviceConfig,
+  dataFn,
   Devices,
   deviceTypeClassMap,
   fn,
   Light,
   Thermostat,
+  tuyaAPI,
 } = envVars;
 
 exports.getAliasIds = (nickname, parentPath = '') => {
@@ -22,7 +22,7 @@ exports.getAliasIds = (nickname, parentPath = '') => {
   }
 
   const parentPathCopy = `${parentPath}.${nickname}`;
-  const subDeviceInfo = deviceConfig[fn.slugify(nickname)] || {};
+  const subDeviceInfo = global.deviceConfig[fn.slugify(nickname)] || {};
   return exports.getDeviceIdInfo(subDeviceInfo, parentPathCopy) || [];
 };
 
@@ -185,7 +185,7 @@ exports.performDeviceAction = async (deviceData) => {
 
         case 'color': {
           if (Device.supportsFeature('color')) {
-            Device.setColor(_.get(colors, [fn.slugify(value), 'value']) || value).then((response) => actionCallback(response, action));
+            Device.setColor(_.get(global.colors, [fn.slugify(value), 'value']) || value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
               success: false,
@@ -319,7 +319,7 @@ exports.performDeviceActions = async (deviceActions) => {
 
       if (deviceNickname.match(/^\*/)) {
         const deviceType = deviceNickname.match(/^\*(.*)/)[1].toLowerCase();
-        fn.filterMap(moreDeviceActions.push(...Object.values(deviceConfig),
+        fn.filterMap(moreDeviceActions.push(...Object.values(global.deviceConfig),
           (device) => (
             _.isPlainObject(device) && (!deviceType || device.type === deviceType)
           ),
@@ -330,7 +330,7 @@ exports.performDeviceActions = async (deviceActions) => {
         return;
       }
 
-      const deviceInfo = deviceConfig[fn.slugify(deviceNickname)] || {};
+      const deviceInfo = global.deviceConfig[fn.slugify(deviceNickname)] || {};
       let deviceIdsInfo = [];
       try {
         deviceIdsInfo = exports.getDeviceIdInfo(deviceInfo, deviceNickname);
@@ -532,4 +532,52 @@ exports.performDeviceActions = async (deviceActions) => {
       message: 'An unexpected error occurred',
     };
   }
+};
+
+exports.reassignDeviceRoom = async (deviceIds, roomId) => {
+  if (!deviceIds || !Array.isArray(deviceIds) || deviceIds.length === 0) {
+    return;
+  }
+
+  await global.models.Device.update({
+    room_id: roomId,
+  }, {
+    where: {
+      id: deviceIds,
+    },
+  });
+
+  deviceIds.forEach((deviceId) => {
+    const device = global.modelsBy.Device.id[deviceId][0];
+    const currentRoomId = device.room_id;
+    global.rooms.forEach((room) => {
+      if (room.id === currentRoomId) {
+        // eslint-disable-next-line no-param-reassign
+        room.devices = room.devices.filter((device) => device.id !== deviceId);
+      }
+
+      if (room.id === roomId) {
+        room.devices.push(fn.filterObjectProperties(device, constants.deviceProps));
+      }
+    });
+  });
+
+  Object.values(global.modelsBy.Device).forEach((deviceGroup) => {
+    Object.values(deviceGroup).forEach((devices) => {
+      devices.forEach((device) => {
+        if (deviceIds.includes(device.id)) {
+          // eslint-disable-next-line no-param-reassign
+          device.room_id = roomId;
+        }
+      });
+    });
+  });
+
+  if (!global.modelsBy.Device.room_id[roomId]) {
+    global.modelsBy.Device.room_id[roomId] = deviceIds.map((deviceId) => (
+      global.modelsBy.Device.id[deviceId][0]
+    ));
+  }
+
+  global.deviceConfig = dataFn.getDeviceConfig(global.modelsBy);
 };

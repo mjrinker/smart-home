@@ -111,14 +111,15 @@ let envVars = {};
   let fn = getFunctions(envVars);
   envVars.fn = fn;
   const dataFn = getDataFunctions(envVars);
+  envVars.dataFn = dataFn;
 
   // STEP 3: Load and format data
-  const models = dataFn.loadModels();
-  const modelsBy = await dataFn.getModelsBy(models);
-  const scenes = dataFn.getScenesConfig(modelsBy);
-  const rooms = dataFn.getRoomsConfig(modelsBy);
-  const colors = dataFn.getColorsConfig(modelsBy);
-  const deviceConfig = await dataFn.getDeviceConfig(modelsBy);
+  global.models = dataFn.loadModels();
+  global.modelsBy = await dataFn.getModelsBy(global.models);
+  global.scenes = dataFn.getScenesConfig(global.modelsBy);
+  global.rooms = dataFn.getRoomsConfig(global.modelsBy);
+  global.colors = dataFn.getColorsConfig(global.modelsBy);
+  global.deviceConfig = await dataFn.getDeviceConfig(global.modelsBy);
 
   const deviceTypeClassMap = {
     tuya: {
@@ -176,14 +177,8 @@ let envVars = {};
 
   // STEP 5: Add remaining envVars
 
-  envVars.colors = colors;
-  envVars.deviceConfig = deviceConfig;
   envVars.Devices = Devices;
   envVars.deviceTypeClassMap = deviceTypeClassMap;
-  envVars.models = models;
-  envVars.modelsBy = modelsBy;
-  envVars.rooms = rooms;
-  envVars.scenes = scenes;
 
   fn = getFunctions(envVars);
   envVars.fn = fn;
