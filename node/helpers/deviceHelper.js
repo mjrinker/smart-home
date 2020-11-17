@@ -14,6 +14,38 @@ const {
   tuyaAPI,
 } = envVars;
 
+const combineLightValueActions = (actions) => {
+  const newActions = _.cloneDeep(actions);
+  const brightnessValue = newActions.brightness || newActions.luminance;
+  if (brightnessValue) {
+    const colorValue = newActions.color;
+    const temperatureValue = newActions.temperature;
+    if (colorValue) {
+      newActions.light = {
+        brightness: brightnessValue,
+        color: colorValue,
+      };
+
+      delete newActions.color;
+      delete newActions.luminance;
+      delete newActions.brightness;
+    }
+
+    if (temperatureValue) {
+      newActions.light = {
+        brightness: brightnessValue,
+        temperature: temperatureValue,
+      };
+
+      delete newActions.luminance;
+      delete newActions.brightness;
+      delete newActions.temperature;
+    }
+  }
+
+  return newActions;
+};
+
 exports.getAliasIds = (nickname, parentPath = '') => {
   if (parentPath.split('.').includes(nickname)) {
     const error = new Error('Circular device aliases');
@@ -127,7 +159,7 @@ exports.performDeviceAction = async (deviceData) => {
             return [preset];
           }
 
-          return Object.keys(preset);
+          return Object.keys(combineLightValueActions(preset));
         }
 
         return [];
@@ -153,8 +185,23 @@ exports.performDeviceAction = async (deviceData) => {
           break;
         }
 
+        case 'light': {
+          if (await Device.supportsLightControl()) {
+            Device.setLightValues(value).then((response) => actionCallback(response, action));
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${deviceData.nickname} does not support action ${action}`,
+            });
+          }
+
+          break;
+        }
+
         case 'brightness': {
-          if (Device.supportsFeature('brightness')) {
+          if (await Device.supportsLightControl()) {
             Device.setBrightness(value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
@@ -169,7 +216,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'luminance': {
-          if (Device.supportsFeature('brightness')) {
+          if (await Device.supportsLightControl()) {
             Device.setBrightness(value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
@@ -184,7 +231,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'color': {
-          if (Device.supportsFeature('color')) {
+          if (await Device.supportsLightControl()) {
             Device.setColor(_.get(global.colors, [fn.slugify(value), 'value']) || value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
@@ -199,7 +246,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'temperature': {
-          if (Device.supportsFeature('temperature')) {
+          if (await Device.supportsLightControl()) {
             if (Device instanceof Light || Device instanceof Bulb) {
               Device.setColorTemperature(value).then((response) => (
                 actionCallback(response, action)));
@@ -219,10 +266,8 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'mode': {
-          if (Device.supportsFeature('mode')) {
-            if (Device instanceof Thermostat) {
-              Device.setOperationMode(value).then((response) => actionCallback(response, action));
-            }
+          if (Device instanceof Thermostat) {
+            Device.setOperationMode(value).then((response) => actionCallback(response, action));
           }
 
           break;
@@ -265,7 +310,7 @@ exports.performDeviceAction = async (deviceData) => {
 
           const presetDeviceData = {
             ...deviceData,
-            actions: preset,
+            actions: combineLightValueActions(preset),
           };
 
           exports.performDeviceAction(presetDeviceData).then((response) => {
@@ -463,7 +508,7 @@ exports.performDeviceActions = async (deviceActions) => {
           );
         }
 
-        deviceData.actions = deviceActionCopy.actions;
+        deviceData.actions = combineLightValueActions(deviceActionCopy.actions);
         exports.performDeviceAction(deviceData).then((response) => {
           const responseArray = Array.isArray(response) ? [...response] : [response];
           responseArray.forEach((responseObj) => {
