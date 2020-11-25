@@ -141,12 +141,55 @@ let envVars = {};
   };
 
   // STEP 4: Initialize device listeners
-  const Devices = {};
+  global.Devices = {};
+
+  const deviceConnectionCallback = (event, deviceId, deviceDef, device) => () => {
+    if (!global.Devices[deviceId]) {
+      const DeviceType = _.get(deviceTypeClassMap, ['meross', deviceDef.deviceType], null);
+      global.Devices[deviceId] = {
+        device,
+        deviceDef,
+        Device: new DeviceType({
+          deviceId,
+          device,
+          deviceDef,
+        }),
+      };
+    }
+
+    device.getOnlineStatus((error, response) => {
+      Date.now(); // needs just a tiny delay which this call provides
+      if (global.Devices[deviceId]) {
+        global.Devices[deviceId].Device.online = !!response?.online?.status;
+      }
+    });
+
+    device.getSystemAllData((error, response) => {
+      Date.now(); // needs just a tiny delay which this call provides
+      if (global.Devices[deviceId]) {
+        global.Devices[deviceId].Device.state = !!response?.all?.digest?.togglex[0]?.onoff;
+        if (global.Devices[deviceId].Device instanceof Bulb) {
+          const lightState = response?.all?.digest?.light;
+          if (lightState) {
+            global.Devices[deviceId].Device.lightValues = {
+              brightness: lightState.luminance || -1,
+              color_temp: lightState.temperature || -1,
+              color: (Number.isNaN(Number(lightState.rgb))
+                ? 0xffffff : Number(lightState.rgb)).toString(16),
+            };
+          }
+        }
+      }
+    });
+  };
 
   merossAPI.on('deviceInitialized', (deviceId, deviceDef, device) => {
     device.on('data', (namespace, payload) => {
       switch (namespace) {
         case 'Appliance.Control.ToggleX': {
+          if (global.Devices[deviceId]) {
+            global.Devices[deviceId].Device.state = !!payload?.togglex[0]?.onoff;
+          }
           break;
         }
         default: {
@@ -154,17 +197,11 @@ let envVars = {};
         }
       }
     });
-  });
 
-  merossAPI.on('deviceInitialized', (deviceId, deviceDef, device) => {
-    device.on('connected', () => {
-      const DeviceType = _.get(deviceTypeClassMap, ['meross', deviceDef.deviceType], null);
-      Devices[deviceId] = {
-        device,
-        deviceDef,
-        Device: new DeviceType({ deviceId, device, deviceDef }),
-      };
-    });
+    device.on('connected', deviceConnectionCallback('connected', deviceId, deviceDef, device));
+    device.on('reconnect', deviceConnectionCallback('reconnect', deviceId, deviceDef, device));
+    device.on('close', deviceConnectionCallback('close', deviceId, deviceDef, device));
+    device.on('error', deviceConnectionCallback('error', deviceId, deviceDef, device));
   });
 
   merossAPI.connect((error) => {
@@ -177,7 +214,6 @@ let envVars = {};
 
   // STEP 5: Add remaining envVars
 
-  envVars.Devices = Devices;
   envVars.deviceTypeClassMap = deviceTypeClassMap;
 
   fn = getFunctions(envVars);

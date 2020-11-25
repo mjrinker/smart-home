@@ -17,7 +17,7 @@ const routeList = [
     controller: 'sceneController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['1.0.0'], func: 'playScene' },
+      { versions: ['1.0.0'], func: controller.playScene },
     ],
   },
   {
@@ -26,11 +26,9 @@ const routeList = [
     controller: 'sceneController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: envVars.versions, func: 'playScene' },
+      { versions: envVars.versions, func: controller.playScene },
     ],
   },
 ];
 
-envVars.fn.setRoutes({
-  controller, prefix, routeList,
-});
+envVars.fn.setRoutes({ prefix, routeList });

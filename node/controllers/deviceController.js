@@ -3,7 +3,6 @@ const deviceHelper = require('../helpers/deviceHelper');
 
 const {
   _,
-  Devices,
   fn,
 } = envVars;
 
@@ -57,22 +56,25 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
 
       return null;
     })(deviceIdInfo)));
-  })(deviceName)))).filter((deviceResponse) => deviceResponse)[0];
+  })(deviceName)))).filter((deviceResponse) => deviceResponse)[0] || [];
+
+  const devices = await Promise.all(mfgIds.map((mfgId) => (async (mfgId) => {
+    if (!global.Devices[mfgId]) {
+      return null;
+    }
+    const { deviceDef, Device } = global.Devices[mfgId];
+    return {
+      name: deviceDef.devName,
+      online: Device.online,
+      state: Device.state,
+      ...(Device.lightValues ? { light_state: Device.lightValues } : {}),
+    };
+  })(mfgId)));
 
   return res.status(200).json({
     success: true,
     status: 200,
     code: 0,
-    devices: await Promise.all(mfgIds.map((mfgId) => (async (mfgId) => {
-      const { deviceDef, Device } = Devices[mfgId];
-      return {
-        name: deviceDef.devName,
-        online: await Device.isOnline(),
-        state: await Device.isOn(),
-        ...(await Device.supportsLightControl() ? {
-          light_state: await Device.getLightValues(),
-        } : {}),
-      };
-    })(mfgId))),
+    devices: devices.filter((device) => device),
   });
 });

@@ -13,19 +13,22 @@ class MerossDevice {
     this.device = options.device;
 
     if (!options.deviceDef) {
-      throw new Error('Please pass the Meross Device Def');
+      throw new Error('Please pass the Meross Device Definition');
     }
     this.deviceDef = options.deviceDef;
 
+    this.online = false;
+    this.state = false;
+
     this.controlToggleX = promisify(this.device.controlToggleX).bind(this.device);
     this.getSystemAllData = promisify(this.device.getSystemAllData).bind(this.device);
-    this.getSystemAbilities = promisify(this.device.getSystemAbilities).bind(this.device);
     this.getOnlineStatus = promisify(this.device.getOnlineStatus).bind(this.device);
+    this.getSystemAbilities = promisify(this.device.getSystemAbilities).bind(this.device);
   }
 
   async turnOn() {
     try {
-      await this.controlToggleX(0, true);
+      this.controlToggleX(0, true);
       return {
         success: true,
         device: {
@@ -54,7 +57,7 @@ class MerossDevice {
 
   async turnOff() {
     try {
-      await this.controlToggleX(0, false);
+      this.controlToggleX(0, false);
       return {
         success: true,
         device: {
@@ -82,25 +85,25 @@ class MerossDevice {
   }
 
   async toggle() {
-    if (await this.isOn()) {
+    if (this.state) {
       return this.turnOff();
     }
     return this.turnOn();
-  }
-
-  async isOn() {
-    try {
-      const response = await this.getSystemAllData();
-      return !!response?.all?.digest?.togglex[0]?.onoff;
-    } catch (error) {
-      return false;
-    }
   }
 
   async isOnline() {
     try {
       const response = await this.getOnlineStatus();
       return !!response?.online?.status;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async isOn() {
+    try {
+      const response = await this.getSystemAllData();
+      return !!response?.all?.digest?.togglex[0]?.onoff;
     } catch (error) {
       return false;
     }

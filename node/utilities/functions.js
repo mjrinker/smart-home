@@ -235,8 +235,8 @@ module.exports = (envVars) => {
         }
 
         routeVersions.versions.forEach((versionNumber) => {
-          if (params.controller[routeVersions.func]) {
-            versionRoutesObj[versionNumber] = params.controller[routeVersions.func];
+          if (routeVersions.func) {
+            versionRoutesObj[versionNumber] = routeVersions.func;
           } else {
             console.log('ROUTES:', routeVersions.func, 'not found');
           }

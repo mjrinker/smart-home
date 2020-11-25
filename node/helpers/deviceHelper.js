@@ -6,7 +6,6 @@ const {
   Bulb,
   Climate,
   dataFn,
-  Devices,
   deviceTypeClassMap,
   fn,
   Light,
@@ -90,7 +89,7 @@ exports.getDevices = async () => [
   ...(await exports.getTuyaDevices() || []), ...(await exports.getMerossDevices() || []),
 ];
 
-exports.getMerossDevices = async () => Object.values(Devices).map(({ deviceDef }) => ({
+exports.getMerossDevices = async () => Object.values(global.Devices).map(({ deviceDef }) => ({
   nickname: deviceDef.name,
   data: {
     online: true,
@@ -106,7 +105,7 @@ exports.getMerossDevices = async () => Object.values(Devices).map(({ deviceDef }
 
 exports.getTuyaDevices = async () => tuyaAPI.find();
 
-exports.isOn = async (deviceData) => deviceData.Device.isOn();
+exports.isOn = (deviceData) => deviceData.Device.state;
 
 exports.performDeviceAction = async (deviceData) => {
   const { Device } = deviceData;
@@ -186,7 +185,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'light': {
-          if (await Device.supportsLightControl()) {
+          if (Device instanceof Bulb) {
             Device.setLightValues(value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
@@ -201,7 +200,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'brightness': {
-          if (await Device.supportsLightControl()) {
+          if (Device instanceof Bulb) {
             Device.setBrightness(value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
@@ -216,7 +215,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'luminance': {
-          if (await Device.supportsLightControl()) {
+          if (Device instanceof Bulb) {
             Device.setBrightness(value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
@@ -231,7 +230,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'color': {
-          if (await Device.supportsLightControl()) {
+          if (Device instanceof Bulb) {
             Device.setColor(_.get(global.colors, [fn.slugify(value), 'value']) || value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
@@ -246,7 +245,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'temperature': {
-          if (await Device.supportsLightControl()) {
+          if (Device instanceof Bulb) {
             if (Device instanceof Light || Device instanceof Bulb) {
               Device.setColorTemperature(value).then((response) => (
                 actionCallback(response, action)));
@@ -429,8 +428,8 @@ exports.performDeviceActions = async (deviceActions) => {
 
           Device = new DeviceType(constructorParams);
         } else if (platform === 'meross') {
-          Device = Devices[deviceId].Device;
-          const { deviceDef } = Devices[deviceId];
+          Device = global.Devices[deviceId].Device;
+          const { deviceDef } = global.Devices[deviceId];
           if (!Device) {
             errors.push({
               success: false,
@@ -450,7 +449,10 @@ exports.performDeviceActions = async (deviceActions) => {
           info: deviceIdInfo,
           actions: {},
           Device,
-          data: await Device.getState(),
+          data: {
+            online: Device.online,
+            state: Device.state,
+          },
         };
 
         if (Array.isArray(deviceActionCopy.actions)) {
@@ -467,7 +469,7 @@ exports.performDeviceActions = async (deviceActions) => {
                 if ((deviceIdInfo.timeBased[actionSlug] || (actionSlug === 'toggle' && deviceIdInfo.timeBased.on))) {
                   let timeAction = actionSlug;
                   if (actionSlug === 'toggle') {
-                    const isOn = await exports.isOn(deviceData);
+                    const isOn = exports.isOn(deviceData);
                     if (!isOn) {
                       timeAction = 'on';
                     }

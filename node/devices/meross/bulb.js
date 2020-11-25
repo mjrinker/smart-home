@@ -9,6 +9,13 @@ const retrieveColor = (response) => {
 class Bulb extends MerossDevice {
   constructor(options) {
     super(options);
+
+    this.lightValues = {
+      brightness: 100,
+      color_temp: 100,
+      color: 'ffffff',
+    };
+
     this.controlLight = promisify(this.device.controlLight).bind(this.device);
   }
 
@@ -41,13 +48,13 @@ class Bulb extends MerossDevice {
     const lightValues = {
       capacity: mode, // 1 = RGB, 2 = TEMPERATURE, 3 = (not supported), 4 = LUMINANCE, 5 = RGB_LUMINANCE, 6 = TEMPERATURE_LUMINANCE
       channel: 0,
-      rgb: parseInt(features.color, 16) || await this.getColor(),
-      temperature: features.temperature || await this.getColorTemperature(),
-      luminance: features.brightness || await this.getBrightness(),
+      rgb: parseInt(features.color, 16) || this.lightValues.color,
+      temperature: features.temperature || this.lightValues.color_temp,
+      luminance: features.brightness || this.lightValues.brightness,
     };
 
     try {
-      await this.controlLight(lightValues);
+      this.controlLight(lightValues);
       return {
         success: true,
         device: {
