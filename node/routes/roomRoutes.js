@@ -26,7 +26,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.2.0'], func: controller.getRoom },
+      { versions: ['3.0.0'], func: controller.getRoom },
     ],
   },
   {
@@ -35,7 +35,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.2.0'], func: controller.createRoom },
+      { versions: ['3.0.0'], func: controller.createRoom },
     ],
   },
   {
@@ -44,7 +44,9 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.2.0'], func: controller.updateRoom },
+      { versions: ['3.0.0'], func: controller.updateRoom },
+    ],
+  },
     ],
   },
   {
@@ -53,7 +55,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.2.0'], func: controller.reassignRoomDevices },
+      { versions: ['3.0.0'], func: controller.reassignRoomDevices },
     ],
   },
 ];

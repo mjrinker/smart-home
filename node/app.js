@@ -105,7 +105,7 @@ let envVars = {};
     Thermostat,
     tuyaAPI,
     TuyaDevice,
-    versions: _.sortBy(['1.0.0', '2.0.0', '2.1.0', '2.1.1', '2.2.0']),
+    versions: _.sortBy(['1.0.0', '2.0.0', '2.1.0', '2.1.1', '3.0.0']),
   };
 
   let fn = getFunctions(envVars);
@@ -189,6 +189,17 @@ let envVars = {};
         case 'Appliance.Control.ToggleX': {
           if (global.Devices[deviceId]) {
             global.Devices[deviceId].Device.state = !!payload?.togglex[0]?.onoff;
+          }
+          break;
+        }
+        case 'Appliance.Control.Light': {
+          if (global.Devices[deviceId]) {
+            global.Devices[deviceId].Device.lightValues = {
+              brightness: payload?.light?.luminance || -1,
+              color_temp: payload?.light?.temperature || -1,
+              color: (Number.isNaN(Number(payload?.light?.rgb))
+                ? 0xffffff : Number(payload?.light?.rgb)).toString(16),
+            };
           }
           break;
         }
