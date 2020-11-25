@@ -15,9 +15,9 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['1.0.0'], func: 'getRoomsV1_0_0' },
-      { versions: ['2.0.0', '2.1.0', '2.1.1'], func: 'getRoomsV2_0_0__V2_1_1' },
-      { versions: envVars.versions, func: 'getRooms' },
+      { versions: ['1.0.0'], func: controller.getRoomsV1_0_0 },
+      { versions: ['2.0.0', '2.1.0', '2.1.1'], func: controller.getRoomsV2_0_0__V2_1_1 },
+      { versions: envVars.versions, func: controller.getRooms },
     ],
   },
   {
@@ -26,7 +26,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.2.0'], func: 'getRoom' },
+      { versions: ['2.2.0'], func: controller.getRoom },
     ],
   },
   {
@@ -35,7 +35,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.2.0'], func: 'createRoom' },
+      { versions: ['2.2.0'], func: controller.createRoom },
     ],
   },
   {
@@ -44,7 +44,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.2.0'], func: 'updateRoom' },
+      { versions: ['2.2.0'], func: controller.updateRoom },
     ],
   },
   {
@@ -53,11 +53,9 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.2.0'], func: 'reassignRoomDevices' },
+      { versions: ['2.2.0'], func: controller.reassignRoomDevices },
     ],
   },
 ];
 
-envVars.fn.setRoutes({
-  controller, prefix, routeList,
-});
+envVars.fn.setRoutes({ prefix, routeList });
