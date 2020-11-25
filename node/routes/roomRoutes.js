@@ -47,8 +47,6 @@ const routeList = [
       { versions: ['3.0.0'], func: controller.updateRoom },
     ],
   },
-    ],
-  },
   {
     path: '/:roomId/reassignDevices',
     method: 'put',
