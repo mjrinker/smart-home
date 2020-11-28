@@ -8,6 +8,7 @@ const {
   dataFn,
   fn,
   Light,
+  sequelize,
   Thermostat,
   tuyaAPI,
 } = envVars;
@@ -568,13 +569,21 @@ exports.reassignDeviceRoom = async (deviceIds, roomId) => {
     return;
   }
 
-  await global.models.Device.update({
-    room_id: roomId,
-  }, {
-    where: {
-      id: deviceIds,
-    },
-  });
+  const transaction = await sequelize.transaction();
+
+  try {
+    await global.models.Device.update({
+      room_id: roomId,
+    }, {
+      where: {
+        id: deviceIds,
+      },
+      transaction,
+    });
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 
   deviceIds.forEach((deviceId) => {
     const device = global.modelsBy.Device.id[deviceId][0];

@@ -2,9 +2,10 @@ const envVars = module.parent.parent.exports;
 
 const {
   fn,
+  sequelize,
 } = envVars;
 
-exports.addAlias = async (model, modelId, label, preferred = false) => {
+exports.addAlias = async (model, modelId, label, preferred = false, transaction = null) => {
   const slug = fn.slugify(label);
   const aliasGroup = global.modelsBy.Alias?.model_id[`${model}_${modelId}`];
   if (aliasGroup?.find((alias) => alias?.alias === slug)) {
@@ -13,12 +14,19 @@ exports.addAlias = async (model, modelId, label, preferred = false) => {
     };
   }
 
+  let transactionToUse = transaction;
+  if (!transaction) {
+    transactionToUse = await sequelize.transaction();
+  }
+
   const alias = await global.models.Alias.create({
     model,
     model_id: modelId,
     alias: slug,
     label,
     preferred,
+  }, {
+    transaction: transactionToUse,
   });
 
   Object.entries(alias.dataValues).forEach(([field, value]) => {
@@ -32,7 +40,7 @@ exports.addAlias = async (model, modelId, label, preferred = false) => {
   return alias;
 };
 
-exports.removeAlias = async (aliasId) => {
+exports.removeAlias = async (aliasId, transaction = null) => {
   Object.entries(global.modelsBy.Alias).forEach(([field, aliasGroups]) => {
     Object.entries(aliasGroups).forEach(([fieldValue, aliasGroup]) => {
       global.modelsBy.Alias[field][fieldValue] = aliasGroup.filter((alias) => (
@@ -41,10 +49,16 @@ exports.removeAlias = async (aliasId) => {
     });
   });
 
+  let transactionToUse = transaction;
+  if (!transaction) {
+    transactionToUse = await sequelize.transaction();
+  }
+
   const deleted = await global.models.Alias.destroy({
     where: {
       id: aliasId,
     },
+    transaction: transactionToUse,
   });
 
   return !!deleted[0];

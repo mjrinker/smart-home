@@ -6,6 +6,7 @@ const roomHelper = require('../helpers/roomHelper');
 
 const {
   fn,
+  sequelize,
 } = envVars;
 
 exports.addAlias = fn.asyncMw(async (req, res) => {
@@ -22,10 +23,12 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
 
   const room = global.rooms.find((room) => room.id === Number(roomId));
 
+  const transaction = await sequelize.transaction();
   let alias;
   try {
-    alias = await aliasHelper.addAlias('room', roomId, label, !!preferred);
+    alias = await aliasHelper.addAlias('room', roomId, label, !!preferred, transaction);
   } catch (error) {
+    await transaction.rollback();
     return res.status(500).json({
       success: false,
       status: 500,
@@ -35,6 +38,7 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
   }
 
   if (alias.error === 'EXISTS') {
+    await transaction.rollback();
     return res.status(409).json({
       success: false,
       status: 409,
@@ -42,6 +46,8 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
       message: `Alias "${label}" for room "${room.label}" already exists`,
     });
   }
+
+  await transaction.commit();
 
   return res.status(201).json({
     success: true,
@@ -63,13 +69,31 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
     });
   }
 
-  let room;
+  const transaction = await sequelize.transaction();
+  let roomCopy;
   try {
-    room = await global.models.Room.create({
+    const room = await global.models.Room.create({
       name,
       label,
+    }, {
+      transaction,
     });
+
+    // no await
+    deviceHelper.reassignDeviceRoom(deviceIds, room.id).then(() => {
+      roomHelper.updateModelsByRoomObjects({ newRoom: room.dataValues });
+    });
+
+    roomCopy = {
+      ...JSON.parse(JSON.stringify(room)),
+      actions: constants.roomActions,
+      devices: deviceIds.map((deviceId) => {
+        const device = global.modelsBy.Device.id[deviceId][0];
+        return fn.filterObjectProperties(device, constants.deviceProps);
+      }),
+    };
   } catch (error) {
+    await transaction.rollback();
     return res.status(500).json({
       success: false,
       status: 500,
@@ -78,19 +102,7 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
     });
   }
 
-  // no await
-  deviceHelper.reassignDeviceRoom(deviceIds, room.id).then(() => {
-    roomHelper.updateModelsByRoomObjects({ newRoom: room.dataValues });
-  });
-
-  const roomCopy = {
-    ...JSON.parse(JSON.stringify(room)),
-    actions: constants.roomActions,
-    devices: deviceIds.map((deviceId) => {
-      const device = global.modelsBy.Device.id[deviceId][0];
-      return fn.filterObjectProperties(device, constants.deviceProps);
-    }),
-  };
+  await transaction.commit();
 
   return res.status(201).json({
     success: true,
@@ -114,19 +126,22 @@ exports.deleteRoom = fn.asyncMw(async (req, res) => {
     });
   }
 
-  // no await
-  roomHelper.updateModelsByRoomObjects({ oldRoom: room });
-
+  const transaction = await sequelize.transaction();
   let success;
   try {
     const deleted = await global.models.Room.destroy({
       where: {
         id: Number(roomId),
       },
+      transaction,
     });
 
     success = !!deleted;
+
+    // no await
+    roomHelper.updateModelsByRoomObjects({ oldRoom: room });
   } catch (error) {
+    await transaction.rollback();
     return res.status(500).json({
       success: false,
       status: 500,
@@ -136,6 +151,7 @@ exports.deleteRoom = fn.asyncMw(async (req, res) => {
   }
 
   if (!success) {
+    await transaction.rollback();
     return res.status(500).json({
       success: false,
       status: 500,
@@ -144,6 +160,7 @@ exports.deleteRoom = fn.asyncMw(async (req, res) => {
     });
   }
 
+  await transaction.commit();
   return res.status(204).send();
 });
 
@@ -192,9 +209,11 @@ exports.removeAlias = fn.asyncMw(async (req, res) => {
     });
   }
 
+  const transaction = await sequelize.transaction();
   try {
-    await aliasHelper.removeAlias(aliasId);
+    await aliasHelper.removeAlias(aliasId, transaction);
   } catch (error) {
+    await transaction.rollback();
     return res.status(500).json({
       success: false,
       status: 500,
@@ -202,6 +221,8 @@ exports.removeAlias = fn.asyncMw(async (req, res) => {
       message: `Cannot delete alias id ${aliasId}`,
     });
   }
+
+  await transaction.commit();
 
   return res.status(204).json({
     success: true,
@@ -255,11 +276,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
     ...updateObj,
   };
 
-  // no await
-  deviceHelper.reassignDeviceRoom(deviceIds, room.id).then(() => {
-    roomHelper.updateModelsByRoomObjects({ newRoom, oldRoom: room });
-  });
-
+  const transaction = await sequelize.transaction();
   let success;
   if (Object.keys(updateObj).length > 0) {
     try {
@@ -267,10 +284,17 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
         where: {
           id: Number(roomId),
         },
+        transaction,
       });
 
       success = !!updated[0];
+
+      // no await
+      deviceHelper.reassignDeviceRoom(deviceIds, room.id).then(() => {
+        roomHelper.updateModelsByRoomObjects({ newRoom, oldRoom: room });
+      });
     } catch (error) {
+      await transaction.rollback();
       return res.status(500).json({
         success: false,
         status: 500,
@@ -283,6 +307,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
   }
 
   if (!success) {
+    await transaction.rollback();
     return res.status(500).json({
       success: false,
       status: 500,
@@ -291,6 +316,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
     });
   }
 
+  await transaction.commit();
   return res.status(204).send();
 });
 
