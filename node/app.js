@@ -53,10 +53,55 @@ let envVars = {};
       dialect: process.env.DB_DIALECT,
       port: process.env.DB_PORT,
       logging: false,
+      dialectOptions: {
+        multipleStatements: true,
+      },
     },
   );
 
   await sequelize.authenticate();
+
+  // STEP 2: Apply DB Updates
+  const DBUpdate = sequelize.define('db_update', {
+    // Model attributes are defined here
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    applied_on: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+  }, {
+    timestamps: true,
+    createdAt: 'applied_on',
+    updatedAt: false,
+  });
+
+  const dbUpdates = _.keyBy(await DBUpdate.findAll({ raw: true }), 'name');
+
+  const dbUpdatesDir = path.join(__dirname, 'sql', 'db_updates');
+  const dbUpdateFiles = fs.readdirSync(dbUpdatesDir);
+  await Promise.all(dbUpdateFiles.map((filename) => (async (filename) => {
+    const dbUpdateName = filename.replace(/\.sql$/, '');
+    if (!dbUpdates[dbUpdateName]) {
+      const sql = fs.readFileSync(path.join(dbUpdatesDir, filename), 'utf8');
+      const transaction = await sequelize.transaction();
+      try {
+        await sequelize.query(sql, { transaction });
+        await DBUpdate.create({
+          name: dbUpdateName,
+        }, {
+          transaction,
+        });
+        await transaction.commit();
+        console.info(`DB update ${dbUpdateName}: SUCCESS`);
+      } catch (error) {
+        await transaction.rollback();
+        console.error(`DB update ${dbUpdateName}: FAILED - ${error.message}`);
+      }
+    }
+  })(filename)));
 
   const merossAPI = new MerossCloud({
     email: process.env.MEROSS_USERNAME,
@@ -80,7 +125,7 @@ let envVars = {};
     console.error(error);
   }
 
-  // STEP 2: Add essential envVars
+  // STEP 3: Add essential envVars
   envVars = {
     _,
     app,
@@ -113,7 +158,7 @@ let envVars = {};
   const dataFn = getDataFunctions(envVars);
   envVars.dataFn = dataFn;
 
-  // STEP 3: Load and format data
+  // STEP 4: Load and format data
   global.models = dataFn.loadModels();
   global.modelsBy = await dataFn.getModelsBy(global.models);
   global.scenes = dataFn.getScenesConfig(global.modelsBy);
@@ -140,9 +185,57 @@ let envVars = {};
     },
   };
 
-  // STEP 4: Initialize device listeners
   global.Devices = {};
+  tuyaAPI.find().then((devices) => {
+    devices.forEach((device) => {
+      const deviceId = device.id;
+      const online = device.data?.online;
+      const deviceDef = {
+        bindTime: 0,
+        channels: [],
+        devName: device.name,
+        devIconId: device.icon,
+        deviceType: device.dev_type,
+        domain: '',
+        fmwareVersion: '',
+        hdwareVersion: '',
+        iconType: 0,
+        onlineStatus: Number(!!online),
+        region: process.env.REGION || 'us',
+        reservedDomain: '',
+        skillNumber: '',
+        subType: device.ha_type,
+        userDevIcon: '',
+        uuid: deviceId,
+      };
 
+      const DeviceType = _.get(deviceTypeClassMap, ['tuya', deviceDef.deviceType], null);
+
+      if (DeviceType) {
+        global.Devices[deviceId] = {
+          deviceDef,
+          Device: new DeviceType({
+            api: tuyaAPI,
+            deviceId,
+            device,
+            deviceDef,
+            online,
+            state: device.data?.state,
+          }),
+        };
+      } else {
+        console.error(JSON.stringify({
+          level: 'ERROR',
+          message: 'Cannot find matching device class',
+          data: {
+            deviceDef,
+          },
+        }));
+      }
+    });
+  });
+
+  // STEP 5: Initialize device listeners
   const deviceConnectionCallback = (event, deviceId, deviceDef, device) => () => {
     if (!global.Devices[deviceId]) {
       const DeviceType = _.get(deviceTypeClassMap, ['meross', deviceDef.deviceType], null);
@@ -223,7 +316,7 @@ let envVars = {};
     }
   });
 
-  // STEP 5: Add remaining envVars
+  // STEP 6: Add remaining envVars
 
   envVars.deviceTypeClassMap = deviceTypeClassMap;
 
@@ -232,7 +325,7 @@ let envVars = {};
 
   module.exports = envVars;
 
-  // STEP 6: Set routes
+  // STEP 7: Set routes
   app.use(cookieParser());
 
   app.use(bodyParser.urlencoded({ extended: true }));
@@ -261,6 +354,6 @@ let envVars = {};
     });
   });
 
-  // STEP 7: Start server
+  // STEP 8: Start server
   app.listen(port, () => console.log(`Smart Home REST Server started on port: ${port}`));
 })();

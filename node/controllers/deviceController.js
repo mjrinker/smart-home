@@ -23,25 +23,23 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
     });
   }
 
-  const mfgIds = (await Promise.all(deviceNames.flatMap((deviceName) => (async (deviceName) => {
+  const devices = deviceNames.flatMap((deviceName) => {
     const deviceInfo = global.deviceConfig[fn.slugify(deviceName)] || {};
 
+    let deviceIdsInfo = [];
     if (deviceName.match(/^\*/)) {
       const deviceType = deviceName.match(/^\*(.*)/)[1].toLowerCase();
-      return fn.filterMap(Object.values(global.deviceConfig),
-        (device) => (
-          _.isPlainObject(device) && (!deviceType || device.type === deviceType)
-        ),
-        (device) => device.mfg_id);
-    }
-
-    let deviceIdsInfo = [];
-    try {
-      deviceIdsInfo = deviceHelper.getDeviceIdInfo(deviceInfo, deviceName);
-      deviceIdsInfo = _.uniqBy(deviceIdsInfo, (deviceIdInfo) => `${deviceIdInfo.platform} - ${deviceIdInfo.id}`);
-    } catch (error) {
-      if (error.name === 'CIRCULAR_ALIAS') {
-        return null;
+      deviceIdsInfo = Object.values(global.deviceConfig).filter((device) => (
+        _.isPlainObject(device) && (!deviceType || device.type === deviceType)
+      ));
+    } else {
+      try {
+        deviceIdsInfo = deviceHelper.getDeviceIdInfo(deviceInfo, deviceName);
+        deviceIdsInfo = _.uniqBy(deviceIdsInfo, (deviceIdInfo) => `${deviceIdInfo.platform} - ${deviceIdInfo.id}`);
+      } catch (error) {
+        if (error.name === 'CIRCULAR_ALIAS') {
+          return null;
+        }
       }
     }
 
@@ -49,27 +47,19 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
       return null;
     }
 
-    return Promise.all(deviceIdsInfo.map((deviceIdInfo) => (async (deviceIdInfo) => {
-      if (deviceIdInfo.platform === 'meross') {
-        return deviceIdInfo.mfg_id;
+    return deviceIdsInfo.map((deviceIdInfo) => {
+      if (!global.Devices[deviceIdInfo.mfg_id]) {
+        return null;
       }
-
-      return null;
-    })(deviceIdInfo)));
-  })(deviceName)))).filter((deviceResponse) => deviceResponse)[0] || [];
-
-  const devices = await Promise.all(mfgIds.map((mfgId) => (async (mfgId) => {
-    if (!global.Devices[mfgId]) {
-      return null;
-    }
-    const { deviceDef, Device } = global.Devices[mfgId];
-    return {
-      name: deviceDef.devName,
-      online: Device.online,
-      state: Device.state,
-      ...(Device.lightValues ? { light_state: Device.lightValues } : {}),
-    };
-  })(mfgId)));
+      const { Device } = global.Devices[deviceIdInfo.mfg_id];
+      return {
+        name: Device.name,
+        online: Device.online,
+        state: Device.state,
+        ...(Device.lightValues ? { light_state: Device.lightValues } : {}),
+      };
+    });
+  }).filter((deviceResponse) => deviceResponse) || [];
 
   return res.status(200).json({
     success: true,

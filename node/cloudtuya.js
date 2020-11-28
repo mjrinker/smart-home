@@ -1,4 +1,5 @@
 const debug = require('debug')('[TUYA]');
+const delay = require('delay');
 const fetch = require('node-fetch');
 const { URLSearchParams } = require('url');
 // A module that uses the tuya cloud api, to get and set device states
@@ -90,7 +91,7 @@ class CloudTuya {
   }
 
   /**
-   * @param {Object} opbtions
+   * @param {Object} options
    */
   async find(options) {
     const config = (options) || {};
@@ -132,7 +133,11 @@ class CloudTuya {
 
   // Converts true/false to ON/OFF
   static smap(itemState) {
-    return (itemState && 'ON') || 'OFF';
+    let logicalState = itemState;
+    if (typeof itemState === typeof 'string') {
+      logicalState = itemState === 'true';
+    }
+    return (logicalState ? 'ON' : 'OFF');
   }
 
   // Convert text on/off, logic and numbers into 1/0 values
@@ -204,8 +209,7 @@ class CloudTuya {
       body: JSON.stringify(data),
     };
     debug(postConfig);
-    const setProgress = await this.post(postConfig);
-    return setProgress;
+    return this.post(postConfig);
   }
 
   async login(options) {
@@ -230,14 +234,26 @@ class CloudTuya {
       body: params,
     };
 
-    const tokens = await this.post(postConfig);
+    let tokens = await this.post(postConfig);
     this.tokens = tokens;
     this.accessToken = tokens.access_token;
     debug(tokens);
 
-    if (tokens && tokens.responseStatus && tokens.responseStatus === 'error') {
-      console.error(tokens.errorMsg);
-      return null;
+    while (tokens && tokens.responseStatus && tokens.responseStatus === 'error') {
+      const delayLogin = tokens.errorMsg.match(/you cannot auth exceed once in (\d+) seconds/);
+      if (delayLogin) {
+        const delaySecondsMatch = Number(delayLogin[1]);
+        const delaySeconds = (Number.isNaN(delaySecondsMatch) ? 60 : delaySecondsMatch);
+        console.log(`Delaying Tuya auth for ${delaySeconds} seconds...`);
+        await delay(delaySeconds * 1000);
+        tokens = await this.post(postConfig);
+        this.tokens = tokens;
+        this.accessToken = tokens.access_token;
+        debug(tokens);
+      } else {
+        console.error(tokens.errorMsg);
+        return null;
+      }
     }
 
     return tokens;

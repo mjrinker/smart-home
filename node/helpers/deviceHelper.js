@@ -6,7 +6,6 @@ const {
   Bulb,
   Climate,
   dataFn,
-  deviceTypeClassMap,
   fn,
   Light,
   Thermostat,
@@ -137,7 +136,10 @@ exports.performDeviceAction = async (deviceData) => {
       } else if (responseSuccess) {
         successes.push({
           success: true,
-          device: deviceData,
+          device: {
+            ...deviceData,
+            Device: Object.fromEntries(Object.entries(Device).filter(([key]) => key !== 'api')),
+          },
         });
       } else {
         errors.push({
@@ -408,39 +410,19 @@ exports.performDeviceActions = async (deviceActions) => {
       totalDevices += deviceIdsInfo.length;
 
       await Promise.all(deviceIdsInfo.map((deviceIdInfo) => (async (deviceIdInfo) => {
-        const { platform } = deviceIdInfo;
         const deviceId = deviceIdInfo.mfg_id;
-        let Device;
-        if (platform === 'tuya') {
-          const constructorParams = { api: tuyaAPI, deviceId };
-          const DeviceType = _.get(deviceTypeClassMap, [platform, deviceIdInfo.type], null);
-          if (!DeviceType) {
-            errors.push({
-              success: false,
-              status: 500,
-              error: 'DEVICE_TYPE_NOT_DEFINED',
-              message: `Cannot match device type ${deviceIdsInfo.type} to a class`,
-            });
+        const { Device } = global.Devices[deviceId];
+        const { deviceDef } = global.Devices[deviceId];
+        if (!Device) {
+          errors.push({
+            success: false,
+            status: 500,
+            error: 'DEVICE_TYPE_NOT_DEFINED',
+            message: `Cannot match device type ${deviceDef.deviceType} to a class`,
+          });
 
-            deviceCounter += 1;
-            return;
-          }
-
-          Device = new DeviceType(constructorParams);
-        } else if (platform === 'meross') {
-          Device = global.Devices[deviceId].Device;
-          const { deviceDef } = global.Devices[deviceId];
-          if (!Device) {
-            errors.push({
-              success: false,
-              status: 500,
-              error: 'DEVICE_TYPE_NOT_DEFINED',
-              message: `Cannot match device type ${deviceDef.deviceType} to a class`,
-            });
-
-            deviceCounter += 1;
-            return;
-          }
+          deviceCounter += 1;
+          return;
         }
 
         const deviceData = {

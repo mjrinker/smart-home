@@ -58,13 +58,13 @@ class Bulb extends MerossDevice {
       return {
         success: true,
         device: {
-          nickname: this.deviceDef.devName,
+          nickname: this.name,
           data: {
             online: true,
             state: true,
             light_state: lightValues,
           },
-          name: this.deviceDef.devName,
+          name: this.name,
           icon: this.deviceDef.userDevIcon || this.deviceDef.devIconId,
           id: this.deviceDef.uuid,
           dev_type: this.deviceDef.deviceType,

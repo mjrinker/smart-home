@@ -16,6 +16,7 @@ class MerossDevice {
       throw new Error('Please pass the Meross Device Definition');
     }
     this.deviceDef = options.deviceDef;
+    this.name = this.deviceDef.devName;
 
     this.online = false;
     this.state = false;
@@ -32,13 +33,13 @@ class MerossDevice {
       return {
         success: true,
         device: {
-          nickname: this.deviceDef.devName,
+          nickname: this.name,
           data: {
             online: true,
             state: true,
             light_state: null,
           },
-          name: this.deviceDef.devName,
+          name: this.name,
           icon: this.deviceDef.userDevIcon || this.deviceDef.devIconId,
           id: this.deviceDef.uuid,
           dev_type: this.deviceDef.deviceType,
@@ -61,13 +62,13 @@ class MerossDevice {
       return {
         success: true,
         device: {
-          nickname: this.deviceDef.devName,
+          nickname: this.name,
           data: {
             online: true,
             state: false,
             light_state: null,
           },
-          name: this.deviceDef.devName,
+          name: this.name,
           icon: this.deviceDef.userDevIcon || this.deviceDef.devIconId,
           id: this.deviceDef.uuid,
           dev_type: this.deviceDef.deviceType,
@@ -94,7 +95,8 @@ class MerossDevice {
   async isOnline() {
     try {
       const response = await this.getOnlineStatus();
-      return !!response?.online?.status;
+      this.online = !!response?.online?.status;
+      return this.online;
     } catch (error) {
       return false;
     }
@@ -103,7 +105,8 @@ class MerossDevice {
   async isOn() {
     try {
       const response = await this.getSystemAllData();
-      return !!response?.all?.digest?.togglex[0]?.onoff;
+      this.state = !!response?.all?.digest?.togglex[0]?.onoff;
+      return this.state;
     } catch (error) {
       return false;
     }
