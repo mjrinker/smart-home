@@ -1,8 +1,8 @@
 INSERT INTO groups_models (group_id, model, model_id)
 VALUES
-    ((SELECT id FROM `groups` WHERE name = 'babys_name'), 'device', (SELECT id FROM `devices` WHERE name = 'babys_room_1')),
-    ((SELECT id FROM `groups` WHERE name = 'babys_name'), 'device', (SELECT id FROM `devices` WHERE name = 'babys_room_2')),
-    ((SELECT id FROM `groups` WHERE name = 'babys_name'), 'device', (SELECT id FROM `devices` WHERE name = 'babys_room_3'));
+    ((SELECT id FROM `groups` WHERE name = 'babys_room'), 'device', (SELECT id FROM `devices` WHERE name = 'babys_room_1')),
+    ((SELECT id FROM `groups` WHERE name = 'babys_room'), 'device', (SELECT id FROM `devices` WHERE name = 'babys_room_2')),
+    ((SELECT id FROM `groups` WHERE name = 'babys_room'), 'device', (SELECT id FROM `devices` WHERE name = 'babys_room_3'));
 
 INSERT INTO presets (model, model_id, name, label)
 VALUES
