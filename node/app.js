@@ -87,6 +87,7 @@ let envVars = {};
     if (!dbUpdates[dbUpdateName]) {
       const sql = fs.readFileSync(path.join(dbUpdatesDir, filename), 'utf8');
       const transaction = await sequelize.transaction();
+      let success = true;
       try {
         await sequelize.query(sql, { transaction });
         await DBUpdate.create({
@@ -94,11 +95,15 @@ let envVars = {};
         }, {
           transaction,
         });
-        await transaction.commit();
         console.info(`DB update ${dbUpdateName}: SUCCESS`);
       } catch (error) {
+        success = false;
         await transaction.rollback();
         console.error(`DB update ${dbUpdateName}: FAILED - ${error.message}`);
+      }
+
+      if (success) {
+        await transaction.commit();
       }
     }
   })(filename)));
