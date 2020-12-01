@@ -144,7 +144,7 @@ let envVars = {};
   const dbUpdates = _.keyBy(await global.DBUpdate.findAll({ raw: true }), 'name');
 
   const dbUpdatesDir = path.join(__dirname, 'sql', 'db_updates');
-  const dbUpdateFiles = fs.readdirSync(dbUpdatesDir);
+  const dbUpdateFiles = _.sortBy(fs.readdirSync(dbUpdatesDir));
   await Promise.all(dbUpdateFiles.map((filename) => (async (filename) => {
     const dbUpdateName = filename.replace(/\.sql$/, '');
     if (!dbUpdates[dbUpdateName]) {
