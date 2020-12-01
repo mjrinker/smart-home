@@ -4,13 +4,16 @@ const _ = require('lodash');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const delay = require('delay');
+const { exec } = require('child_process');
 const express = require('express');
 const fetch = require('node-fetch');
 const fs = require('fs');
 const { getSunrise, getSunset } = require('sunrise-sunset-js');
 const MerossCloud = require('meross-cloud');
+const moment = require('moment-timezone');
 const path = require('path');
 const { Sequelize, DataTypes, Model } = require('sequelize');
+const { uuid } = require('uuidv4');
 
 const getFunctions = require('./utilities/functions');
 const getDataFunctions = require('./utilities/data');
@@ -38,6 +41,25 @@ let envVars = {};
   // STEP 1: make connections
   const app = express();
   const port = process.env.PORT;
+  const dbUpdateSuffix = process.env.DB_UPDATE_SUFFIX || uuid();
+  const environment = process.env.ENVIRONMENT;
+  const isLiveEnv = ['live', 'prod', 'production'].includes(environment);
+
+  if (isLiveEnv) {
+    setTimeout(() => {
+      exec('git reset && git add sql/db_updates/*.sql && git commit -m "db updates" && git push -u origin master', (error, stdout, stderr) => {
+        if (error) {
+          console.error(`git error: ${error.message}`);
+          return;
+        }
+        if (stderr) {
+          console.error(`git stderr: ${stderr}`);
+          return;
+        }
+        console.error(`git stdout: ${stdout}`);
+      });
+    }, (moment().endOf('day').diff(moment())));
+  }
 
   const location = {
     lat: parseFloat(process.env.LAT),
@@ -52,7 +74,46 @@ let envVars = {};
       host: process.env.DB_HOSTNAME,
       dialect: process.env.DB_DIALECT,
       port: process.env.DB_PORT,
-      logging: false,
+      logging: async (string) => {
+        if (isLiveEnv && !global.dbUpdateLock) {
+          console.log(string);
+          const sqlWithParams = string.replace(/Executing \(.*?\): /g, '');
+          const isSelect = sqlWithParams.match(/^\(*\s*SELECT/i);
+          const tableIsDbUpdates = sqlWithParams.match(/^\(*\s*(?:UPDATE|INSERT INTO|DELETE FROM) `?db_updates`?/i);
+          const isTransaction = sqlWithParams.match(/^\(*\s*(?:START TRANSACTION|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|SET autocommit = )/i);
+          if (!isSelect && !tableIsDbUpdates && !isTransaction) {
+            const [sqlSafe, sqlParams] = sqlWithParams.split(/;\s*/, 2);
+            let sql = sqlSafe;
+            sqlParams?.split(/,\s*/).forEach((param) => {
+              const formattedParam = param.replace(/^"|"$/g, "'");
+              sql = sql.replace('?', formattedParam);
+            });
+
+            sql = `${sql};\n\n`;
+            const dbUpdateName = `${moment().format('YYYYMMDD')}_${dbUpdateSuffix}`;
+            const dbUpdateFilename = `${dbUpdateName}.sql`;
+            const dbUpdateFilepath = path.join(__dirname, 'sql', 'db_updates', dbUpdateFilename);
+            fs.writeFileSync(dbUpdateFilepath, sql, { flag: 'a+' });
+
+            const transaction = await sequelize.transaction();
+            try {
+              await global.DBUpdate.findOrCreate({
+                where: {
+                  name: dbUpdateName,
+                },
+                defaults: {
+                  name: dbUpdateName,
+                },
+                transaction,
+              });
+              await transaction.commit();
+            } catch (error) {
+              await transaction.rollback();
+            }
+          }
+        }
+      },
+      logQueryParameters: true,
       dialectOptions: {
         multipleStatements: true,
       },
@@ -62,7 +123,7 @@ let envVars = {};
   await sequelize.authenticate();
 
   // STEP 2: Apply DB Updates
-  const DBUpdate = sequelize.define('db_update', {
+  global.DBUpdate = sequelize.define('db_update', {
     // Model attributes are defined here
     name: {
       type: DataTypes.STRING,
@@ -78,7 +139,9 @@ let envVars = {};
     updatedAt: false,
   });
 
-  const dbUpdates = _.keyBy(await DBUpdate.findAll({ raw: true }), 'name');
+  global.dbUpdateLock = true;
+
+  const dbUpdates = _.keyBy(await global.DBUpdate.findAll({ raw: true }), 'name');
 
   const dbUpdatesDir = path.join(__dirname, 'sql', 'db_updates');
   const dbUpdateFiles = fs.readdirSync(dbUpdatesDir);
@@ -90,7 +153,7 @@ let envVars = {};
       let success = true;
       try {
         await sequelize.query(sql, { transaction });
-        await DBUpdate.create({
+        await global.DBUpdate.create({
           name: dbUpdateName,
         }, {
           transaction,
@@ -107,6 +170,8 @@ let envVars = {};
       }
     }
   })(filename)));
+
+  global.dbUpdateLock = false;
 
   const merossAPI = new MerossCloud({
     email: process.env.MEROSS_USERNAME,
@@ -150,6 +215,7 @@ let envVars = {};
     merossAPI,
     MerossDevice,
     Model,
+    moment,
     path,
     sequelize,
     Thermostat,
