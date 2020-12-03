@@ -1,6 +1,6 @@
 const {
-  bgCyan,
-  bgGreen,
+  bgBrightCyan,
+  bgBrightGreen,
   bgRed,
   bgYellow,
   brightBlack,
@@ -233,10 +233,10 @@ module.exports = (envVars) => {
 
   fn.getResponseStatusAnsiColor = (status) => {
     if (status < 300) {
-      return bgGreen(brightBlack(` ${status} `));
+      return bgBrightGreen(brightBlack(` ${status} `));
     }
     if (status < 400) {
-      return bgCyan(brightBlack(` ${status} `));
+      return bgBrightCyan(brightBlack(` ${status} `));
     }
     if (status < 500) {
       return bgYellow(white(` ${status} `));

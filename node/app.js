@@ -17,9 +17,9 @@ const uuid = require('uuid').v4;
 
 const {
   black,
-  blue,
-  cyan,
-  green,
+  brightBlue,
+  brightCyan,
+  brightGreen,
   red,
   yellow,
 } = require('ansicolors');
@@ -99,7 +99,6 @@ try {
         port: process.env.DB_PORT,
         logging: async (string) => {
           if (isLiveEnv && !global.dbUpdateLock) {
-            logger.log(string);
             const sqlWithParams = string.replace(/Executing \(.*?\): /g, '');
             const isSelect = sqlWithParams.match(/^\(*\s*SELECT/i);
             const tableIsDbUpdates = sqlWithParams.match(/^\(*\s*(?:UPDATE|INSERT INTO|DELETE FROM) `?db_updates`?/i);
@@ -352,7 +351,7 @@ try {
         case 'connect':
           // falls through
         case 'connected': {
-          ansiColor = green;
+          ansiColor = brightGreen;
           break;
         }
         case 'reconnect': {
@@ -360,7 +359,7 @@ try {
           break;
         }
         case 'close': {
-          ansiColor = blue;
+          ansiColor = brightBlue;
           break;
         }
         case 'error': {
@@ -474,10 +473,10 @@ try {
         body: req.body,
       };
       const methods = {
-        GET: green,
+        GET: brightGreen,
         POST: yellow,
-        PUT: blue,
-        PATCH: cyan,
+        PUT: brightBlue,
+        PATCH: brightCyan,
         DELETE: red,
       };
       const method = methods[req.method] ? methods[req.method](req.method) : black(req.method);

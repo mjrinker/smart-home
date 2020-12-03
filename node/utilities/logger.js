@@ -2,8 +2,8 @@ const _ = require('lodash');
 const moment = require('moment-timezone');
 
 const {
-  bgCyan,
-  bgGreen,
+  bgBrightCyan,
+  bgBrightGreen,
   bgRed,
   bgYellow,
   bgWhite,
@@ -28,13 +28,13 @@ const formatLoggerMessage = (msg) => {
 
 exports.logger = {
   debug: async (...message) => {
-    console.debug(bgCyan(brightBlack('  DEBUG  ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
+    console.debug(bgBrightCyan(brightBlack('  DEBUG  ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
   },
   error: async (...message) => {
     console.error(bgRed(brightWhite('  ERROR  ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
   },
   info: async (...message) => {
-    console.info(bgGreen(brightBlack('  INFO   ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
+    console.info(bgBrightGreen(brightBlack('  INFO   ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
   },
   log: async (...message) => {
     console.log(bgWhite(black('  LOG    ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
