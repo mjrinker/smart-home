@@ -1,3 +1,13 @@
+const {
+  bgCyan,
+  bgGreen,
+  bgRed,
+  bgYellow,
+  brightBlack,
+  brightWhite,
+  white,
+} = require('ansicolors');
+
 module.exports = (envVars) => {
   const fn = {};
 
@@ -8,6 +18,8 @@ module.exports = (envVars) => {
     getSunrise,
     getSunset,
     location,
+    logger,
+    tab,
     versions,
   } = envVars;
 
@@ -25,12 +37,12 @@ module.exports = (envVars) => {
           newError = new Error(message);
         }
 
-        console.error(newError);
+        logger.error(newError);
         if (next) {
           return next(newError);
         }
 
-        return res.status(500).json({ error: newError });
+        return fn.sendResponse(req, res, 500, { error: newError });
       });
   };
 
@@ -219,6 +231,30 @@ module.exports = (envVars) => {
     string.substring(0, 1).toUpperCase() + _.camelCase(string).substring(1)
   );
 
+  fn.getResponseStatusAnsiColor = (status) => {
+    if (status < 300) {
+      return bgGreen(white(status));
+    }
+    if (status < 400) {
+      return bgCyan(brightBlack(status));
+    }
+    if (status < 500) {
+      return bgYellow(white(status));
+    }
+    return bgRed(brightWhite(status));
+  };
+
+  fn.sendResponse = (req, res, status = 200, body = null) => {
+    logger.info(tab('RESPONSE', req.header('X-Request-ID'), fn.getResponseStatusAnsiColor(status), body));
+    if (_.isPlainObject(body)) {
+      return res.status(status).json(body);
+    }
+    if (body) {
+      return res.status(status).send(body);
+    }
+    return res.status(status).send();
+  };
+
   fn.setRoutes = (params) => {
     params.routeList.forEach((route) => {
       let remainingVersions = [...versions];
@@ -238,7 +274,7 @@ module.exports = (envVars) => {
           if (routeVersions.func) {
             versionRoutesObj[versionNumber] = routeVersions.func;
           } else {
-            console.log('ROUTES:', routeVersions.func, 'not found');
+            logger.log('ROUTES:', routeVersions.func, 'not found');
           }
         });
       });
@@ -262,7 +298,7 @@ module.exports = (envVars) => {
           }
 
           if (!versionSupported) {
-            return res.status(400).json({
+            return fn.sendResponse(req, res, 400, {
               success: false,
               status: 400,
               error: 'VERSION_NOT_SUPPORTED_ERROR',

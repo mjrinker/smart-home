@@ -13,7 +13,7 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
   const { roomId } = req.params;
   const { label, preferred } = req.body;
   if (!global.modelsBy.Room.id[Number(roomId)]) {
-    return res.status(404).json({
+    return fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
       error: 'ROOM_NOT_FOUND',
@@ -29,7 +29,7 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
     alias = await aliasHelper.addAlias('room', roomId, label, !!preferred, transaction);
   } catch (error) {
     await transaction.rollback();
-    return res.status(500).json({
+    return fn.sendResponse(req, res, 500, {
       success: false,
       status: 500,
       error: 'ALIAS_NOT_CREATED',
@@ -39,7 +39,7 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
 
   if (alias.error === 'EXISTS') {
     await transaction.rollback();
-    return res.status(409).json({
+    return fn.sendResponse(req, res, 409, {
       success: false,
       status: 409,
       error: 'ALIAS_ALREADY_EXISTS',
@@ -49,7 +49,7 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
 
   await transaction.commit();
 
-  return res.status(201).json({
+  return fn.sendResponse(req, res, 201, {
     success: true,
     status: 201,
     code: 0,
@@ -61,7 +61,7 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
   const { label, deviceIds } = req.body;
   const name = fn.slugify(label);
   if (global.modelsBy.Room?.name[name]?.length) {
-    return res.status(409).json({
+    return fn.sendResponse(req, res, 409, {
       success: false,
       status: 409,
       error: 'ROOM_ALREADY_EXISTS',
@@ -94,7 +94,7 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
     };
   } catch (error) {
     await transaction.rollback();
-    return res.status(500).json({
+    return fn.sendResponse(req, res, 500, {
       success: false,
       status: 500,
       error: 'ROOM_NOT_CREATED',
@@ -104,7 +104,7 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
 
   await transaction.commit();
 
-  return res.status(201).json({
+  return fn.sendResponse(req, res, 201, {
     success: true,
     status: 201,
     code: 0,
@@ -118,7 +118,7 @@ exports.deleteRoom = fn.asyncMw(async (req, res) => {
   const roomsWithRoomId = global.modelsBy.Room.id[Number(roomId)];
   const room = Number(Boolean(roomsWithRoomId?.length)) > 0 ? roomsWithRoomId[0] : null;
   if (!room) {
-    return res.status(404).json({
+    return fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
       error: 'ROOM_NOT_FOUND',
@@ -142,7 +142,7 @@ exports.deleteRoom = fn.asyncMw(async (req, res) => {
     roomHelper.updateModelsByRoomObjects({ oldRoom: room });
   } catch (error) {
     await transaction.rollback();
-    return res.status(500).json({
+    return fn.sendResponse(req, res, 500, {
       success: false,
       status: 500,
       error: 'ROOM_NOT_DELETED',
@@ -152,7 +152,7 @@ exports.deleteRoom = fn.asyncMw(async (req, res) => {
 
   if (!success) {
     await transaction.rollback();
-    return res.status(500).json({
+    return fn.sendResponse(req, res, 500, {
       success: false,
       status: 500,
       error: 'ROOM_NOT_DELETED',
@@ -161,14 +161,14 @@ exports.deleteRoom = fn.asyncMw(async (req, res) => {
   }
 
   await transaction.commit();
-  return res.status(204).send();
+  return fn.sendResponse(req, res, 204);
 });
 
 exports.getRoom = fn.asyncMw(async (req, res) => {
   const { roomId } = req.params;
   const room = global.rooms.find((room) => room.id === Number(roomId));
   if (!room) {
-    return res.status(404).json({
+    return fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
       error: 'ROOM_NOT_FOUND',
@@ -176,7 +176,7 @@ exports.getRoom = fn.asyncMw(async (req, res) => {
     });
   }
 
-  return res.json({
+  return fn.sendResponse(req, res, 200, {
     success: true,
     status: 200,
     code: 0,
@@ -184,7 +184,7 @@ exports.getRoom = fn.asyncMw(async (req, res) => {
   });
 });
 
-exports.getRooms = fn.asyncMw(async (req, res) => res.json({
+exports.getRooms = fn.asyncMw(async (req, res) => fn.sendResponse(req, res, 200, {
   success: true,
   status: 200,
   code: 0,
@@ -195,13 +195,13 @@ exports.reassignRoomDevices = fn.asyncMw(async (req, res) => {
   const { roomId } = req.params;
   const { deviceIds } = req.body;
   deviceHelper.reassignDeviceRoom(deviceIds, Number(roomId));
-  return res.status(204).send();
+  return fn.sendResponse(req, res, 204);
 });
 
 exports.removeAlias = fn.asyncMw(async (req, res) => {
   const { aliasId } = req.params;
   if (!global.modelsBy.Alias.id[aliasId]) {
-    return res.status(404).json({
+    return fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
       error: 'ALIAS_NOT_FOUND',
@@ -214,7 +214,7 @@ exports.removeAlias = fn.asyncMw(async (req, res) => {
     await aliasHelper.removeAlias(aliasId, transaction);
   } catch (error) {
     await transaction.rollback();
-    return res.status(500).json({
+    return fn.sendResponse(req, res, 500, {
       success: false,
       status: 500,
       error: 'ALIAS_NOT_DELETED',
@@ -224,7 +224,7 @@ exports.removeAlias = fn.asyncMw(async (req, res) => {
 
   await transaction.commit();
 
-  return res.status(204).json({
+  return fn.sendResponse(req, res, 204, {
     success: true,
     status: 204,
     code: 0,
@@ -243,7 +243,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
   const roomsWithRoomId = global.modelsBy.Room.id[Number(roomId)];
   const room = Number(Boolean(roomsWithRoomId?.length)) > 0 ? roomsWithRoomId[0] : null;
   if (!room) {
-    return res.status(404).json({
+    return fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
       error: 'ROOM_NOT_FOUND',
@@ -295,7 +295,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
       });
     } catch (error) {
       await transaction.rollback();
-      return res.status(500).json({
+      return fn.sendResponse(req, res, 500, {
         success: false,
         status: 500,
         error: 'ROOM_NOT_UPDATED',
@@ -308,7 +308,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
 
   if (!success) {
     await transaction.rollback();
-    return res.status(500).json({
+    return fn.sendResponse(req, res, 500, {
       success: false,
       status: 500,
       error: 'ROOM_NOT_UPDATED',
@@ -317,7 +317,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
   }
 
   await transaction.commit();
-  return res.status(204).send();
+  return fn.sendResponse(req, res, 204);
 });
 
 /** ******************************************************************************************* **\
@@ -331,7 +331,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
  * @version v2.1.0,
  * @version v2.1.1
  */
-exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => res.json({
+exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => fn.sendResponse(req, res, 200, {
   success: true,
   status: 200,
   code: 0,
@@ -344,5 +344,5 @@ exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => res.json({
  * @version v1.0.0
  */
 exports.getRoomsV1_0_0 = fn.asyncMw(async (req, res) => (
-  res.json(global.rooms.map((room) => roomHelper.transformRoomV1_0_0(room)))
+  fn.sendResponse(req, res, 200, global.rooms.map((room) => roomHelper.transformRoomV1_0_0(room)))
 ));

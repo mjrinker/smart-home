@@ -12,6 +12,7 @@
   "license": "MIT",
   "dependencies": {
     "@tuyapi/cloud": "^0.4.1",
+    "ansicolors": "^0.3.2",
     "body-parser": "^1.19.0",
     "child_process": "^1.0.2",
     "cookie-parser": "^1.4.5",
@@ -21,7 +22,7 @@
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "lodash": "^4.17.19",
-    "meross-cloud": "^1.3.5",
+    "meross-cloud": "github:Apollon77/meross-cloud",
     "moment-timezone": "^0.5.32",
     "mysql2": "^2.1.0",
     "node-fetch": "^2.6.0",
@@ -29,7 +30,7 @@
     "request": "^2.88.0",
     "sequelize": "^6.3.4",
     "sunrise-sunset-js": "^2.1.2",
-    "uuidv4": "^6.2.5"
+    "uuid": "^8.3.1"
   },
   "devDependencies": {
     "eslint": "^7.6.0",

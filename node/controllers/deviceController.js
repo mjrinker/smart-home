@@ -9,13 +9,13 @@ const {
 exports.performActions = fn.asyncMw(async (req, res) => {
   const deviceActions = req.body;
   const response = await deviceHelper.performDeviceActions(deviceActions);
-  return res.status(response.status).json(response);
+  return fn.sendResponse(req, res, response.status, response);
 });
 
 exports.getDeviceState = fn.asyncMw(async (req, res) => {
   const deviceNames = req.body || [];
   if (!Array.isArray(deviceNames) || deviceNames.length === 0) {
-    return res.status(400).json({
+    return fn.sendResponse(req, res, 400, {
       success: false,
       status: 400,
       error: 'NO_DEVICE_NAMES',
@@ -61,7 +61,7 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
     });
   }).filter((deviceResponse) => deviceResponse) || [];
 
-  return res.status(200).json({
+  return fn.sendResponse(req, res, 200, {
     success: true,
     status: 200,
     code: 0,

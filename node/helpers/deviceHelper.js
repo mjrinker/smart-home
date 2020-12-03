@@ -8,6 +8,7 @@ const {
   dataFn,
   fn,
   Light,
+  logger,
   sequelize,
   Thermostat,
   tuyaAPI,
@@ -291,7 +292,7 @@ exports.performDeviceAction = async (deviceData) => {
           }
 
           if (!deviceData.presets || !deviceData.presets[presetName]) {
-            console.warn(`Preset not found: ${presetName} for device ${deviceData.nickname}`);
+            logger.warn(`Preset not found: ${presetName} for device ${deviceData.nickname}`);
             errors.push({
               success: false,
               status: 404,
@@ -324,7 +325,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         default: {
-          console.warn(`Action not found: ${action}`);
+          logger.warn(`Action not found: ${action}`);
           errors.push({
             success: false,
             status: 404,
@@ -335,7 +336,7 @@ exports.performDeviceAction = async (deviceData) => {
       }
     })([action, value])));
   } else {
-    console.error('Device not defined');
+    logger.error('Device not defined');
     errors.push({
       success: false,
       status: 500,
@@ -506,7 +507,7 @@ exports.performDeviceActions = async (deviceActions) => {
 
           deviceCounter += 1;
         }).catch((error) => {
-          console.error(error);
+          logger.error(error);
         });
       })(deviceIdInfo)));
     };
@@ -553,7 +554,7 @@ exports.performDeviceActions = async (deviceActions) => {
       };
     });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     return {
       success: false,
       status: 500,

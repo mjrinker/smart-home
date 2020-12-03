@@ -2,6 +2,9 @@ const debug = require('debug')('[TUYA]');
 const delay = require('delay');
 const fetch = require('node-fetch');
 const { URLSearchParams } = require('url');
+
+const { logger } = require('./utilities/logger');
+
 // A module that uses the tuya cloud api, to get and set device states
 // All you need is to put your tuya/smartlife email and pass
 // Into the keys.json file
@@ -244,14 +247,14 @@ class CloudTuya {
       if (delayLogin) {
         const delaySecondsMatch = Number(delayLogin[1]);
         const delaySeconds = (Number.isNaN(delaySecondsMatch) ? 60 : delaySecondsMatch);
-        console.log(`Delaying Tuya auth for ${delaySeconds} seconds...`);
+        logger.log(`Delaying Tuya auth for ${delaySeconds} seconds...`);
         await delay(delaySeconds * 1000);
         tokens = await this.post(postConfig);
         this.tokens = tokens;
         this.accessToken = tokens.access_token;
         debug(tokens);
       } else {
-        console.error(tokens.errorMsg);
+        logger.error(tokens.errorMsg);
         return null;
       }
     }

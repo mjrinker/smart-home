@@ -9,7 +9,7 @@ exports.playScene = fn.asyncMw(async (req, res) => {
   const sceneName = fn.slugify(req.params.sceneName);
   const scene = global.scenes[sceneName];
   if (!scene) {
-    res.status(404).json({
+    fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
       error: 'SCENE_NOT_FOUND',
@@ -32,8 +32,8 @@ exports.playScene = fn.asyncMw(async (req, res) => {
 
   const response = await deviceHelper.performDeviceActions(deviceActions);
   if (response && response.status) {
-    return res.status(response.status).json(response);
+    return fn.sendResponse(req, res, response.status, response);
   }
 
-  return res.json(response);
+  return fn.sendResponse(req, res, 200, response);
 });
