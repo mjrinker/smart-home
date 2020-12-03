@@ -13,10 +13,12 @@ const MerossCloud = require('meross-cloud');
 const moment = require('moment-timezone');
 const path = require('path');
 const { Sequelize, DataTypes, Model } = require('sequelize');
-const { uuid } = require('uuid').v4;
+const uuid = require('uuid').v4;
 
 const {
+  black,
   blue,
+  cyan,
   green,
   red,
   yellow,
@@ -459,9 +461,27 @@ try {
     app.use(bodyParser.json({ extended: true }));
 
     app.use(fn.asyncMw(async (req, res, next) => {
-      const requestId = req.header('X-Request-ID') || uuid();
+      const requestId = req.headers['X-Request-ID'] || uuid();
       req.headers['X-Request-ID'] = requestId;
-      logger.info(tab('REQUEST', requestId, req.protocol.toUpperCase(), req.method, req.path, req.params, req.query, req.headers, req.body));
+      const request = {
+        requestId,
+        protocol: req.protocol,
+        method: req.method,
+        path: req.path,
+        params: req.params,
+        query: req.query,
+        headers: req.headers,
+        body: req.body,
+      };
+      const methods = {
+        GET: green,
+        POST: yellow,
+        PUT: blue,
+        PATCH: cyan,
+        DELETE: red,
+      };
+      const method = methods[req.method] ? methods[req.method](req.method) : black(req.method);
+      logger.info(tab('REQUEST ', requestId, req.protocol.toUpperCase(), method, req.path, request));
       return next();
     }));
 

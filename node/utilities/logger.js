@@ -34,7 +34,7 @@ exports.logger = {
     console.error(bgRed(brightWhite('  ERROR  ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
   },
   info: async (...message) => {
-    console.info(bgGreen(white('  INFO   ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
+    console.info(bgGreen(brightBlack('  INFO   ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
   },
   log: async (...message) => {
     console.log(bgWhite(black('  LOG    ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));

@@ -233,19 +233,19 @@ module.exports = (envVars) => {
 
   fn.getResponseStatusAnsiColor = (status) => {
     if (status < 300) {
-      return bgGreen(white(status));
+      return bgGreen(brightBlack(` ${status} `));
     }
     if (status < 400) {
-      return bgCyan(brightBlack(status));
+      return bgCyan(brightBlack(` ${status} `));
     }
     if (status < 500) {
-      return bgYellow(white(status));
+      return bgYellow(white(` ${status} `));
     }
-    return bgRed(brightWhite(status));
+    return bgRed(brightWhite(` ${status} `));
   };
 
   fn.sendResponse = (req, res, status = 200, body = null) => {
-    logger.info(tab('RESPONSE', req.header('X-Request-ID'), fn.getResponseStatusAnsiColor(status), body));
+    logger.info(tab('RESPONSE', req.headers['X-Request-ID'], fn.getResponseStatusAnsiColor(status), body));
     if (_.isPlainObject(body)) {
       return res.status(status).json(body);
     }
