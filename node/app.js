@@ -61,6 +61,8 @@ const logout = (merossAPI) => {
       logger.log('Logged out of Meross');
       process.exit();
     });
+  } else {
+    process.exit();
   }
 };
 
