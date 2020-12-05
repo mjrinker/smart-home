@@ -618,5 +618,7 @@ exports.reassignDeviceRoom = async (deviceIds, roomId) => {
     ));
   }
 
+  await transaction.commit();
+
   global.deviceConfig = dataFn.getDeviceConfig(global.modelsBy);
 };

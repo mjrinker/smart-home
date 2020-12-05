@@ -12,7 +12,9 @@ const { getSunrise, getSunset } = require('sunrise-sunset-js');
 const MerossCloud = require('meross-cloud');
 const moment = require('moment-timezone');
 const path = require('path');
-const { Sequelize, DataTypes, Model } = require('sequelize');
+const {
+  DataTypes, Model, Op, Sequelize,
+} = require('sequelize');
 const uuid = require('uuid').v4;
 
 const {
@@ -48,15 +50,18 @@ const Thermostat = require('./devices/meross/thermostat');
 let envVars = {};
 
 const logout = (merossAPI) => {
-  merossHelper.logout(merossAPI, (err) => {
-    if (err && !(`${err.code} ${err.name}`.match(/1019|1022|1301/g))) {
-      logger.error('Unable to log out of Meross', err);
-      return;
-    }
+  if (merossAPI) {
+    merossHelper.logout(merossAPI, (err) => {
+      if (err && !(`${err.code} ${err.name}`.match(/1019|1022|1301/g))) {
+        logger.error('Unable to log out of Meross', err);
+        process.exit();
+        return;
+      }
 
-    logger.log('Logged out of Meross');
-    process.exit();
-  });
+      logger.log('Logged out of Meross');
+      process.exit();
+    });
+  }
 };
 
 try {
@@ -112,9 +117,24 @@ try {
               });
 
               sql = `${sql};\n\n`;
-              const dbUpdateName = `${moment().format('YYYYMMDD')}_${dbUpdateSuffix}`;
+
+              const dbUpdateDirPath = path.join(__dirname, 'sql', 'db_updates');
+              const dbUpdateFilenames = fs.readdirSync(dbUpdateDirPath);
+
+              const dbUpdateNameRegExp = new RegExp(`^${moment().format('YYYYMMDD')}\\d{6}_${dbUpdateSuffix}`);
+              const dbUpdateNameMatch = _.find(dbUpdateFilenames, (filename) => (
+                filename.match(dbUpdateNameRegExp)
+              ));
+
+              let dbUpdateName;
+              if (dbUpdateNameMatch) {
+                dbUpdateName = dbUpdateNameMatch.replace(/\.sql$/, '');
+              } else {
+                dbUpdateName = `${moment().format('YYYYMMDDHHmmss')}_${dbUpdateSuffix}`;
+              }
+
               const dbUpdateFilename = `${dbUpdateName}.sql`;
-              const dbUpdateFilepath = path.join(__dirname, 'sql', 'db_updates', dbUpdateFilename);
+              const dbUpdateFilepath = path.join(dbUpdateDirPath, dbUpdateFilename);
               fs.writeFileSync(dbUpdateFilepath, sql, { flag: 'a+' });
 
               const transaction = await sequelize.transaction();
@@ -138,6 +158,15 @@ try {
         logQueryParameters: true,
         dialectOptions: {
           multipleStatements: true,
+        },
+        retry: {
+          match: [
+            Sequelize.ConnectionError,
+            Sequelize.ConnectionTimedOutError,
+            Sequelize.TimeoutError,
+            /Lock wait timeout exceeded/i,
+          ],
+          max: 3,
         },
       },
     );
@@ -240,6 +269,7 @@ try {
       MerossDevice,
       Model,
       moment,
+      Op,
       path,
       sequelize,
       tab,
