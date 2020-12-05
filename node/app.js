@@ -198,7 +198,7 @@ try {
 
     const dbUpdatesDir = path.join(__dirname, 'sql', 'db_updates');
     const dbUpdateFiles = _.sortBy(fs.readdirSync(dbUpdatesDir));
-    await Promise.all(dbUpdateFiles.map((filename) => (async (filename) => {
+    await (dbUpdateFiles.map((filename) => async () => {
       const dbUpdateName = filename.replace(/\.sql$/, '');
       if (!dbUpdates[dbUpdateName]) {
         const sql = fs.readFileSync(path.join(dbUpdatesDir, filename), 'utf8');
@@ -222,7 +222,7 @@ try {
           await transaction.commit();
         }
       }
-    })(filename)));
+    })).reduce((p, func) => p.then(func), Promise.resolve());
 
     global.dbUpdateLock = false;
 
