@@ -1,13 +1,14 @@
-const envVars = module.parent.exports;
-
-module.exports = envVars;
-
 const controller = require('../controllers/sceneController');
 
 /* eslint-disable camelcase */
 const prefixV1_0_0 = '/scene';
 const prefix = '/scenes';
 /* eslint-enable camelcase */
+
+const {
+  fn,
+  versions,
+} = global;
 
 const routeList = [
   {
@@ -26,9 +27,9 @@ const routeList = [
     controller: 'sceneController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: envVars.versions, func: controller.playScene },
+      { versions, func: controller.playScene },
     ],
   },
 ];
 
-envVars.fn.setRoutes({ prefix, routeList });
+fn.setRoutes({ prefix, routeList });

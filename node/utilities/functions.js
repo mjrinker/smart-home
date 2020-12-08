@@ -8,20 +8,20 @@ const {
   white,
 } = require('ansicolors');
 
-module.exports = (envVars) => {
+module.exports = () => {
   const fn = {};
 
   const {
     _,
     app,
     delay,
+    geoLocation,
     getSunrise,
     getSunset,
-    location,
     logger,
     tab,
     versions,
-  } = envVars;
+  } = global;
 
   fn.asyncArrayIterator = async (array, iterator, callback) => {
     const useIterator = iterator === 'forEach' ? 'map' : iterator;
@@ -164,13 +164,13 @@ module.exports = (envVars) => {
 
     let startSuntimeDay = tomorrow;
     if (startTime.match(/^sunset/i)
-      && now < getSunrise(location.lat, location.lng, tomorrow)) {
+      && now < getSunrise(geoLocation.lat, geoLocation.lng, tomorrow)) {
       startSuntimeDay = today;
     }
 
     let endSuntimeDay = tomorrow;
     if (endTime.match(/^sunrise/i)
-      && now < getSunset(location.lat, location.lng, tomorrow)) {
+      && now < getSunset(geoLocation.lat, geoLocation.lng, tomorrow)) {
       endSuntimeDay = today;
     }
 
@@ -183,7 +183,7 @@ module.exports = (envVars) => {
     const today = new Date();
     let date = new Date(today);
     if (timeString.match(/^sunrise/i)) {
-      date = getSunrise(location.lat, location.lng, suntimeDay);
+      date = getSunrise(geoLocation.lat, geoLocation.lng, suntimeDay);
       const offset = timeString.replace(/sunrise/i, '');
       if (offset !== '') {
         const operator = offset.match(/^[-+]/)[0];
@@ -196,7 +196,7 @@ module.exports = (envVars) => {
         }
       }
     } else if (timeString.match(/^sunset/i)) {
-      date = getSunset(location.lat, location.lng, suntimeDay);
+      date = getSunset(geoLocation.lat, geoLocation.lng, suntimeDay);
       const offset = timeString.replace(/sunset/i, '');
       if (offset !== '') {
         const operator = offset.match(/^[-+]/)[0];
@@ -274,7 +274,7 @@ module.exports = (envVars) => {
           if (routeVersions.func) {
             versionRoutesObj[versionNumber] = routeVersions.func;
           } else {
-            logger.log('ROUTES:', routeVersions.func, 'not found');
+            logger.warn('ROUTES:', routeVersions.func, 'not found');
           }
         });
       });

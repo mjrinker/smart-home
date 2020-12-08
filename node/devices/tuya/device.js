@@ -18,6 +18,8 @@ class TuyaDevice {
 
     this.online = options.online || false;
     this.state = options.state || false;
+    this.override = true;
+    this.lock = false;
   }
 
   async turnOn() {

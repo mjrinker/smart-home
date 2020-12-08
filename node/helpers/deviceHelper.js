@@ -1,20 +1,26 @@
-const envVars = module.parent.parent.exports;
 const constants = require('./constants');
 
 const {
   _,
   Bulb,
   Climate,
+  colors,
+  delay,
+  deviceConfig,
+  Devices,
   dataFn,
   fn,
   Light,
   logger,
+  models,
+  modelsBy,
+  rooms,
   sequelize,
   Thermostat,
   tuyaAPI,
-} = envVars;
+} = global;
 
-const combineLightValueActions = (actions) => {
+exports.combineLightValueActions = (actions) => {
   const newActions = _.cloneDeep(actions);
   const brightnessValue = newActions.brightness || newActions.luminance;
   if (brightnessValue) {
@@ -54,7 +60,7 @@ exports.getAliasIds = (nickname, parentPath = '') => {
   }
 
   const parentPathCopy = `${parentPath}.${nickname}`;
-  const subDeviceInfo = global.deviceConfig[fn.slugify(nickname)] || {};
+  const subDeviceInfo = deviceConfig[fn.slugify(nickname)] || {};
   return exports.getDeviceIdInfo(subDeviceInfo, parentPathCopy) || [];
 };
 
@@ -90,7 +96,7 @@ exports.getDevices = async () => [
   ...(await exports.getTuyaDevices() || []), ...(await exports.getMerossDevices() || []),
 ];
 
-exports.getMerossDevices = async () => Object.values(global.Devices).map(({ deviceDef }) => ({
+exports.getMerossDevices = async () => Object.values(Devices).map(({ deviceDef }) => ({
   nickname: deviceDef.name,
   data: {
     online: true,
@@ -103,6 +109,60 @@ exports.getMerossDevices = async () => Object.values(global.Devices).map(({ devi
   dev_type: deviceDef.type,
   ha_type: deviceDef.type,
 }));
+
+exports.getTimeBasedActions = async ({ deviceIdInfo, deviceAction, deviceData }) => {
+  if (deviceIdInfo.timeBased && deviceAction.timeBased !== false) {
+    return Object.fromEntries(
+      await Promise.all(Object.entries(deviceAction.actions).map(([action, value]) => (
+        async ([action, value]) => {
+          let actionSlug = fn.slugify(action);
+          let valueCopy = value;
+          if ((deviceIdInfo.timeBased[actionSlug] || (actionSlug === 'toggle' && deviceIdInfo.timeBased.on))) {
+            let timeAction = actionSlug;
+            if (actionSlug === 'toggle') {
+              const isOn = exports.isOn(deviceData);
+              if (!isOn) {
+                timeAction = 'on';
+              }
+            }
+
+            const timeBasedSchedules = deviceIdInfo.timeBased[timeAction];
+            if (timeBasedSchedules) {
+              let scheduledPresetConfigKey = Object.keys(timeBasedSchedules).find(
+                (times) => {
+                  const timesSplit = times.split('->');
+                  const startTime = timesSplit[0];
+                  const endTime = timesSplit[1];
+                  return times !== 'default' && fn.isInTimeRange(startTime, endTime);
+                },
+              );
+
+              if (!scheduledPresetConfigKey && Object.keys(timeBasedSchedules).includes('default')) {
+                scheduledPresetConfigKey = 'default';
+              }
+
+              const scheduledPresetConfig = {
+                times: scheduledPresetConfigKey,
+                presetName: timeBasedSchedules[scheduledPresetConfigKey],
+              };
+
+              if (scheduledPresetConfig) {
+                const presetSlug = fn.slugify(scheduledPresetConfig.presetName);
+                const scheduledPreset = fn.slugifyKeys(deviceIdInfo.presets)[presetSlug];
+                if (scheduledPreset) {
+                  actionSlug = 'preset';
+                  valueCopy = scheduledPresetConfig.presetName;
+                }
+              }
+            }
+          }
+          return [actionSlug, valueCopy];
+        })([action, value]))),
+    );
+  }
+
+  return deviceAction.actions;
+};
 
 exports.getTuyaDevices = async () => tuyaAPI.find();
 
@@ -162,7 +222,7 @@ exports.performDeviceAction = async (deviceData) => {
             return [preset];
           }
 
-          return Object.keys(combineLightValueActions(preset));
+          return Object.keys(exports.combineLightValueActions(preset));
         }
 
         return [];
@@ -203,21 +263,8 @@ exports.performDeviceAction = async (deviceData) => {
           break;
         }
 
-        case 'brightness': {
-          if (Device instanceof Bulb) {
-            Device.setBrightness(value).then((response) => actionCallback(response, action));
-          } else {
-            errors.push({
-              success: false,
-              status: 400,
-              error: 'ACTION_NOT_SUPPORTED',
-              message: `Device ${deviceData.nickname} does not support action ${action}`,
-            });
-          }
-
-          break;
-        }
-
+        case 'brightness':
+          // falls through
         case 'luminance': {
           if (Device instanceof Bulb) {
             Device.setBrightness(value).then((response) => actionCallback(response, action));
@@ -235,7 +282,7 @@ exports.performDeviceAction = async (deviceData) => {
 
         case 'color': {
           if (Device instanceof Bulb) {
-            Device.setColor(_.get(global.colors, [fn.slugify(value), 'value']) || value).then((response) => actionCallback(response, action));
+            Device.setColor(_.get(colors, [fn.slugify(value), 'value']) || value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
               success: false,
@@ -313,7 +360,7 @@ exports.performDeviceAction = async (deviceData) => {
 
           const presetDeviceData = {
             ...deviceData,
-            actions: combineLightValueActions(preset),
+            actions: exports.combineLightValueActions(preset),
           };
 
           exports.performDeviceAction(presetDeviceData).then((response) => {
@@ -367,7 +414,7 @@ exports.performDeviceActions = async (deviceActions) => {
 
       if (deviceNickname.match(/^\*/)) {
         const deviceType = deviceNickname.match(/^\*(.*)/)[1].toLowerCase();
-        fn.filterMap(moreDeviceActions.push(...Object.values(global.deviceConfig),
+        fn.filterMap(moreDeviceActions.push(...Object.values(deviceConfig),
           (device) => (
             _.isPlainObject(device) && (!deviceType || device.type === deviceType)
           ),
@@ -378,7 +425,7 @@ exports.performDeviceActions = async (deviceActions) => {
         return;
       }
 
-      const deviceInfo = global.deviceConfig[fn.slugify(deviceNickname)] || {};
+      const deviceInfo = deviceConfig[fn.slugify(deviceNickname)] || {};
       let deviceIdsInfo = [];
       try {
         deviceIdsInfo = exports.getDeviceIdInfo(deviceInfo, deviceNickname);
@@ -413,8 +460,8 @@ exports.performDeviceActions = async (deviceActions) => {
 
       await Promise.all(deviceIdsInfo.map((deviceIdInfo) => (async (deviceIdInfo) => {
         const deviceId = deviceIdInfo.mfg_id;
-        const { Device } = global.Devices[deviceId];
-        const { deviceDef } = global.Devices[deviceId];
+        const { Device } = Devices[deviceId];
+        const { deviceDef } = Devices[deviceId];
         if (!Device) {
           errors.push({
             success: false,
@@ -426,6 +473,11 @@ exports.performDeviceActions = async (deviceActions) => {
           deviceCounter += 1;
           return;
         }
+
+        Device.lock = true;
+        delay(7000).then(() => {
+          Device.lock = false;
+        });
 
         const deviceData = {
           nickname: deviceNickname,
@@ -444,57 +496,15 @@ exports.performDeviceActions = async (deviceActions) => {
             .map((action) => [action.action, action.value]));
         }
 
-        if (deviceIdInfo.timeBased && deviceActionCopy.timeBased !== false) {
-          deviceActionCopy.actions = Object.fromEntries(
-            await Promise.all(Object.entries(deviceActionCopy.actions).map(([action, value]) => (
-              async ([action, value]) => {
-                let actionSlug = fn.slugify(action);
-                let valueCopy = value;
-                if ((deviceIdInfo.timeBased[actionSlug] || (actionSlug === 'toggle' && deviceIdInfo.timeBased.on))) {
-                  let timeAction = actionSlug;
-                  if (actionSlug === 'toggle') {
-                    const isOn = exports.isOn(deviceData);
-                    if (!isOn) {
-                      timeAction = 'on';
-                    }
-                  }
+        deviceActionCopy.actions = await exports.getTimeBasedActions({
+          deviceIdInfo,
+          deviceAction: deviceActionCopy,
+          deviceData,
+        });
 
-                  const timeBasedSchedules = deviceIdInfo.timeBased[timeAction];
-                  if (timeBasedSchedules) {
-                    let scheduledPresetConfigKey = Object.keys(timeBasedSchedules).find(
-                      (times) => {
-                        const timesSplit = times.split('->');
-                        const startTime = timesSplit[0];
-                        const endTime = timesSplit[1];
-                        return times !== 'default' && fn.isInTimeRange(startTime, endTime);
-                      },
-                    );
+        Device.override = deviceActionCopy.timeBased !== false;
 
-                    if (!scheduledPresetConfigKey && Object.keys(timeBasedSchedules).includes('default')) {
-                      scheduledPresetConfigKey = 'default';
-                    }
-
-                    const scheduledPresetConfig = {
-                      times: scheduledPresetConfigKey,
-                      presetName: timeBasedSchedules[scheduledPresetConfigKey],
-                    };
-
-                    if (scheduledPresetConfig) {
-                      const presetSlug = fn.slugify(scheduledPresetConfig.presetName);
-                      const scheduledPreset = fn.slugifyKeys(deviceIdInfo.presets)[presetSlug];
-                      if (scheduledPreset) {
-                        actionSlug = 'preset';
-                        valueCopy = scheduledPresetConfig.presetName;
-                      }
-                    }
-                  }
-                }
-                return [actionSlug, valueCopy];
-              })([action, value]))),
-          );
-        }
-
-        deviceData.actions = combineLightValueActions(deviceActionCopy.actions);
+        deviceData.actions = exports.combineLightValueActions(deviceActionCopy.actions);
         exports.performDeviceAction(deviceData).then((response) => {
           const responseArray = Array.isArray(response) ? [...response] : [response];
           responseArray.forEach((responseObj) => {
@@ -573,7 +583,7 @@ exports.reassignDeviceRoom = async (deviceIds, roomId) => {
   const transaction = await sequelize.transaction();
 
   try {
-    await global.models.Device.update({
+    await models.Device.update({
       room_id: roomId,
     }, {
       where: {
@@ -587,9 +597,9 @@ exports.reassignDeviceRoom = async (deviceIds, roomId) => {
   }
 
   deviceIds.forEach((deviceId) => {
-    const device = global.modelsBy.Device.id[deviceId][0];
+    const device = modelsBy.Device.id[deviceId][0];
     const currentRoomId = device.room_id;
-    global.rooms.forEach((room) => {
+    rooms.forEach((room) => {
       if (room.id === currentRoomId) {
         // eslint-disable-next-line no-param-reassign
         room.devices = room.devices.filter((device) => device.id !== deviceId);
@@ -601,7 +611,7 @@ exports.reassignDeviceRoom = async (deviceIds, roomId) => {
     });
   });
 
-  Object.values(global.modelsBy.Device).forEach((deviceGroup) => {
+  Object.values(modelsBy.Device).forEach((deviceGroup) => {
     Object.values(deviceGroup).forEach((devices) => {
       devices.forEach((device) => {
         if (deviceIds.includes(device.id)) {
@@ -612,13 +622,13 @@ exports.reassignDeviceRoom = async (deviceIds, roomId) => {
     });
   });
 
-  if (!global.modelsBy.Device.room_id[roomId]) {
+  if (!modelsBy.Device.room_id[roomId]) {
     global.modelsBy.Device.room_id[roomId] = deviceIds.map((deviceId) => (
-      global.modelsBy.Device.id[deviceId][0]
+      modelsBy.Device.id[deviceId][0]
     ));
   }
 
   await transaction.commit();
 
-  global.deviceConfig = dataFn.getDeviceConfig(global.modelsBy);
+  global.deviceConfig = dataFn.getDeviceConfig(modelsBy);
 };

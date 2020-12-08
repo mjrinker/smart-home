@@ -1,10 +1,11 @@
-const envVars = module.parent.exports;
 const deviceHelper = require('../helpers/deviceHelper');
 
 const {
   _,
+  deviceConfig,
+  Devices,
   fn,
-} = envVars;
+} = global;
 
 exports.performActions = fn.asyncMw(async (req, res) => {
   const deviceActions = req.body;
@@ -24,12 +25,12 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
   }
 
   const devices = deviceNames.flatMap((deviceName) => {
-    const deviceInfo = global.deviceConfig[fn.slugify(deviceName)] || {};
+    const deviceInfo = deviceConfig[fn.slugify(deviceName)] || {};
 
     let deviceIdsInfo = [];
     if (deviceName.match(/^\*/)) {
       const deviceType = deviceName.match(/^\*(.*)/)[1].toLowerCase();
-      deviceIdsInfo = Object.values(global.deviceConfig).filter((device) => (
+      deviceIdsInfo = Object.values(deviceConfig).filter((device) => (
         _.isPlainObject(device) && (!deviceType || device.type === deviceType)
       ));
     } else {
@@ -48,10 +49,10 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
     }
 
     return deviceIdsInfo.map((deviceIdInfo) => {
-      if (!global.Devices[deviceIdInfo.mfg_id]) {
+      if (!Devices[deviceIdInfo.mfg_id]) {
         return null;
       }
-      const { Device } = global.Devices[deviceIdInfo.mfg_id];
+      const { Device } = Devices[deviceIdInfo.mfg_id];
       return {
         name: Device.name,
         online: Device.online,

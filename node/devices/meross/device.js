@@ -20,6 +20,8 @@ class MerossDevice {
 
     this.online = false;
     this.state = false;
+    this.override = true;
+    this.lock = false;
 
     this.controlToggleX = promisify(this.device.controlToggleX).bind(this.device);
     this.getSystemAllData = promisify(this.device.getSystemAllData).bind(this.device);

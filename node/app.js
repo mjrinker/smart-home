@@ -47,8 +47,6 @@ const Thermostat = require('./devices/meross/thermostat');
 // const DoorOpener = require('./devices/meross/doorOpener');
 // const Sensor = require('./devices/meross/sensor');
 
-let envVars = {};
-
 const logout = (merossAPI) => {
   if (merossAPI) {
     merossHelper.logout(merossAPI, (err) => {
@@ -58,7 +56,7 @@ const logout = (merossAPI) => {
         return;
       }
 
-      logger.log('Logged out of Meross');
+      logger.info('Logged out of Meross');
       process.exit();
     });
   } else {
@@ -91,7 +89,7 @@ try {
       }, (moment().endOf('day').diff(moment())));
     }
 
-    const location = {
+    const geoLocation = {
       lat: parseFloat(process.env.LAT),
       lng: parseFloat(process.env.LNG),
       timezone: process.env.TZ,
@@ -242,14 +240,14 @@ try {
 
     try {
       await tuyaAPI.login();
-      logger.log('Successfully authenticated with CloudTuya');
+      logger.info('Successfully authenticated with CloudTuya');
     } catch (error) {
       logger.error('Cannot authenticate with CloudTuya');
       logger.error(error);
     }
 
-    // STEP 3: Add essential envVars
-    envVars = {
+    // STEP 3: Add essential globals
+    const globals = {
       _,
       app,
       Bulb,
@@ -261,13 +259,12 @@ try {
       Fan,
       fetch,
       fs,
+      geoLocation,
       getSunrise,
       getSunset,
       Light,
-      location,
       logger,
       logout,
-      merossAPI: global.merossAPI,
       MerossDevice,
       Model,
       moment,
@@ -281,10 +278,43 @@ try {
       versions: _.sortBy(['1.0.0', '2.0.0', '2.1.0', '2.1.1', '3.0.0']),
     };
 
-    let fn = getFunctions(envVars);
-    envVars.fn = fn;
-    const dataFn = getDataFunctions(envVars);
-    envVars.dataFn = dataFn;
+    Object.entries(globals).forEach(([key, value]) => {
+      global[key] = value;
+    });
+
+    // global._ = _;
+    // global.app = app;
+    // global.Bulb = Bulb;
+    // global.Climate = Climate;
+    // global.CloudTuya = CloudTuya;
+    // global.DataTypes = DataTypes;
+    // global.delay = delay;
+    // global.express = express;
+    // global.Fan = Fan;
+    // global.fetch = fetch;
+    // global.fs = fs;
+    // global.geoLocation = geoLocation;
+    // global.getSunrise = getSunrise;
+    // global.getSunset = getSunset;
+    // global.Light = Light;
+    // global.logger = logger;
+    // global.logout = logout;
+    // global.MerossDevice = MerossDevice;
+    // global.Model = Model;
+    // global.moment = moment;
+    // global.Op = Op;
+    // global.path = path;
+    // global.sequelize = sequelize;
+    // global.tab = tab;
+    // global.Thermostat = Thermostat;
+    // global.tuyaAPI = tuyaAPI;
+    // global.TuyaDevice = TuyaDevice;
+    // global.versions = _.sortBy(['1.0.0', '2.0.0', '2.1.0', '2.1.1', '3.0.0']);
+
+    let fn = getFunctions();
+    global.fn = fn;
+    const dataFn = getDataFunctions();
+    global.dataFn = dataFn;
 
     // STEP 4: Load and format data
     global.models = dataFn.loadModels();
@@ -294,7 +324,7 @@ try {
     global.colors = dataFn.getColorsConfig(global.modelsBy);
     global.deviceConfig = await dataFn.getDeviceConfig(global.modelsBy);
 
-    const deviceTypeClassMap = {
+    global.deviceTypeClassMap = {
       tuya: {
         socket: TuyaDevice,
         switch: TuyaDevice,
@@ -314,7 +344,8 @@ try {
     };
 
     global.Devices = {};
-    tuyaAPI.find().then((devices) => {
+
+    tuyaAPI.find({}).then((devices) => {
       devices.forEach((device) => {
         const deviceId = device.id;
         const online = device.data?.online;
@@ -337,8 +368,7 @@ try {
           uuid: deviceId,
         };
 
-        const DeviceType = _.get(deviceTypeClassMap, ['tuya', deviceDef.deviceType], null);
-
+        const DeviceType = _.get(global.deviceTypeClassMap, ['tuya', deviceDef.deviceType], null);
         if (DeviceType) {
           global.Devices[deviceId] = {
             deviceDef,
@@ -364,110 +394,7 @@ try {
     });
 
     // STEP 5: Initialize device listeners
-    const deviceConnectionCallback = (event, deviceId, deviceDef, device) => () => {
-      if (!global.Devices[deviceId]) {
-        const DeviceType = _.get(deviceTypeClassMap, ['meross', deviceDef.deviceType], null);
-        global.Devices[deviceId] = {
-          device,
-          deviceDef,
-          Device: DeviceType ? new DeviceType({
-            deviceId,
-            device,
-            deviceDef,
-          }) : null,
-        };
-      }
-
-      let ansiColor;
-      switch (event) {
-        case 'connect':
-          // falls through
-        case 'connected': {
-          ansiColor = brightGreen;
-          break;
-        }
-        case 'reconnect': {
-          ansiColor = yellow;
-          break;
-        }
-        case 'close': {
-          ansiColor = brightBlue;
-          break;
-        }
-        case 'error': {
-          ansiColor = red;
-          break;
-        }
-        default: {
-          ansiColor = (string) => string;
-        }
-      }
-
-      logger.info(deviceDef.devName, '.'.repeat(Math.abs(30 - deviceDef.devName.length)), ansiColor(event));
-
-      if (['connect', 'connected', 'reconnect'].includes(event)) {
-        device.getOnlineStatus((error, response) => {
-          Date.now(); // needs just a tiny delay which this call provides
-          if (global.Devices[deviceId]) {
-            global.Devices[deviceId].Device.online = !!response?.online?.status;
-          }
-        });
-
-        device.getSystemAllData((error, response) => {
-          Date.now(); // needs just a tiny delay which this call provides
-          if (global.Devices[deviceId]) {
-            global.Devices[deviceId].Device.state = !!response?.all?.digest?.togglex[0]?.onoff;
-            if (global.Devices[deviceId].Device instanceof Bulb) {
-              const lightState = response?.all?.digest?.light;
-              if (lightState) {
-                global.Devices[deviceId].Device.lightValues = {
-                  brightness: lightState.luminance || -1,
-                  color_temp: lightState.temperature || -1,
-                  color: (Number.isNaN(Number(lightState.rgb))
-                    ? 0xffffff : Number(lightState.rgb)).toString(16),
-                };
-              }
-            }
-          }
-        });
-      } else if (['close', 'error'].includes(event) && global.Devices[deviceId]?.Device) {
-        global.Devices[deviceId].Device.online = false;
-        global.Devices[deviceId].Device.state = false;
-      }
-    };
-
-    global.merossAPI.on('deviceInitialized', (deviceId, deviceDef, device) => {
-      device.on('data', (namespace, payload) => {
-        switch (namespace) {
-          case 'Appliance.Control.ToggleX': {
-            if (global.Devices[deviceId]) {
-              global.Devices[deviceId].Device.state = !!payload?.togglex[0]?.onoff;
-            }
-            break;
-          }
-          case 'Appliance.Control.Light': {
-            if (global.Devices[deviceId]) {
-              global.Devices[deviceId].Device.lightValues = {
-                brightness: payload?.light?.luminance || -1,
-                color_temp: payload?.light?.temperature || -1,
-                color: (Number.isNaN(Number(payload?.light?.rgb))
-                  ? 0xffffff : Number(payload?.light?.rgb)).toString(16),
-              };
-            }
-            break;
-          }
-          default: {
-            break;
-          }
-        }
-      });
-
-      device.on('connected', deviceConnectionCallback('connected', deviceId, deviceDef, device));
-      device.on('reconnect', deviceConnectionCallback('reconnect', deviceId, deviceDef, device));
-      device.on('close', deviceConnectionCallback('close', deviceId, deviceDef, device));
-      device.on('error', deviceConnectionCallback('error', deviceId, deviceDef, device));
-    });
-
+    merossHelper.listeners();
     global.merossAPI.connect((error) => {
       if (error) {
         logger.error(`Couldn't connect to Meross: ${error}`);
@@ -476,14 +403,10 @@ try {
       }
     });
 
-    // STEP 6: Add remaining envVars
+    // STEP 6: Add remaining globals
 
-    envVars.deviceTypeClassMap = deviceTypeClassMap;
-
-    fn = getFunctions(envVars);
-    envVars.fn = fn;
-
-    module.exports = envVars;
+    fn = getFunctions();
+    global.fn = fn;
 
     // STEP 7: Set routes
     app.use(cookieParser());
@@ -535,7 +458,7 @@ try {
     });
 
     // STEP 8: Start server
-    app.listen(port, () => logger.log(`Smart Home REST Server started on port: ${port}`));
+    app.listen(port, () => logger.info(`Smart Home REST Server started on port: ${port}`));
   })().catch((error) => {
     if (global.merossAPI) {
       logout(global.merossAPI);

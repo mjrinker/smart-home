@@ -1,13 +1,13 @@
-const envVars = module.parent.parent.exports;
-
 const {
   fn,
+  models,
+  modelsBy,
   sequelize,
-} = envVars;
+} = global;
 
 exports.addAlias = async (model, modelId, label, preferred = false, transaction = null) => {
   const slug = fn.slugify(label);
-  const aliasGroup = global.modelsBy.Alias?.model_id[`${model}_${modelId}`];
+  const aliasGroup = modelsBy.Alias?.model_id[`${model}_${modelId}`];
   if (aliasGroup?.find((alias) => alias?.alias === slug)) {
     return {
       error: 'EXISTS',
@@ -19,7 +19,7 @@ exports.addAlias = async (model, modelId, label, preferred = false, transaction 
     transactionToUse = await sequelize.transaction();
   }
 
-  const alias = await global.models.Alias.create({
+  const alias = await models.Alias.create({
     model,
     model_id: modelId,
     alias: slug,
@@ -31,7 +31,7 @@ exports.addAlias = async (model, modelId, label, preferred = false, transaction 
 
   Object.entries(alias.dataValues).forEach(([field, value]) => {
     const groupByValue = field === 'model_id' ? `${model}_${modelId}` : value;
-    const aliasGroups = global.modelsBy.Alias[field];
+    const aliasGroups = modelsBy.Alias[field];
     if (aliasGroups && aliasGroups[value]) {
       global.modelsBy.Alias[field][groupByValue].push(alias);
     }
@@ -41,7 +41,7 @@ exports.addAlias = async (model, modelId, label, preferred = false, transaction 
 };
 
 exports.removeAlias = async (aliasId, transaction = null) => {
-  Object.entries(global.modelsBy.Alias).forEach(([field, aliasGroups]) => {
+  Object.entries(modelsBy.Alias).forEach(([field, aliasGroups]) => {
     Object.entries(aliasGroups).forEach(([fieldValue, aliasGroup]) => {
       global.modelsBy.Alias[field][fieldValue] = aliasGroup.filter((alias) => (
         alias.id !== Number(aliasId)
@@ -54,7 +54,7 @@ exports.removeAlias = async (aliasId, transaction = null) => {
     transactionToUse = await sequelize.transaction();
   }
 
-  const deleted = await global.models.Alias.destroy({
+  const deleted = await models.Alias.destroy({
     where: {
       id: aliasId,
     },
@@ -66,7 +66,7 @@ exports.removeAlias = async (aliasId, transaction = null) => {
 
 exports.removeAllAliases = async (model, modelId) => {
   const aliasIds = [];
-  Object.entries(global.modelsBy.Alias).forEach(([field, aliasGroup]) => {
+  Object.entries(modelsBy.Alias).forEach(([field, aliasGroup]) => {
     global.modelsBy.Alias[field] = aliasGroup.filter((alias) => {
       const isMatch = alias.model === model && alias.model_id === modelId;
       if (isMatch) {
@@ -77,7 +77,7 @@ exports.removeAllAliases = async (model, modelId) => {
     });
   });
 
-  const deleted = await global.models.Alias.destroy({
+  const deleted = await models.Alias.destroy({
     where: {
       id: aliasIds,
     },

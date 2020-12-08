@@ -1,6 +1,6 @@
 const constants = require('../helpers/constants');
 
-module.exports = (envVars) => {
+module.exports = () => {
   const returnObj = {};
 
   const {
@@ -11,7 +11,7 @@ module.exports = (envVars) => {
     Model,
     path,
     sequelize,
-  } = envVars;
+  } = global;
 
   returnObj.getModelsBy = async (models) => (
     Object.fromEntries(

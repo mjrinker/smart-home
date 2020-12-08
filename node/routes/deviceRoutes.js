@@ -1,13 +1,14 @@
-const envVars = module.parent.exports;
-
-module.exports = envVars;
-
 const controller = require('../controllers/deviceController');
 
 /* eslint-disable camelcase */
 const prefixV1_0_0 = '/device';
 const prefix = '/devices';
 /* eslint-enable camelcase */
+
+const {
+  fn,
+  versions,
+} = global;
 
 const routeList = [
   {
@@ -26,7 +27,7 @@ const routeList = [
     controller: 'deviceController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: envVars.versions, func: controller.performActions },
+      { versions, func: controller.performActions },
     ],
   },
   {
@@ -40,4 +41,4 @@ const routeList = [
   },
 ];
 
-envVars.fn.setRoutes({ prefix, routeList });
+fn.setRoutes({ prefix, routeList });

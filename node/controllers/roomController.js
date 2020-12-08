@@ -1,4 +1,3 @@
-const envVars = module.parent.exports;
 const constants = require('../helpers/constants');
 const aliasHelper = require('../helpers/aliasHelper');
 const deviceHelper = require('../helpers/deviceHelper');
@@ -6,13 +5,16 @@ const roomHelper = require('../helpers/roomHelper');
 
 const {
   fn,
+  modelsBy,
+  models,
+  rooms,
   sequelize,
-} = envVars;
+} = global;
 
 exports.addAlias = fn.asyncMw(async (req, res) => {
   const { roomId } = req.params;
   const { label, preferred } = req.body;
-  if (!global.modelsBy.Room.id[Number(roomId)]) {
+  if (!modelsBy.Room.id[Number(roomId)]) {
     return fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
@@ -21,7 +23,7 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
     });
   }
 
-  const room = global.rooms.find((room) => room.id === Number(roomId));
+  const room = rooms.find((room) => room.id === Number(roomId));
 
   const transaction = await sequelize.transaction();
   let alias;
@@ -60,7 +62,7 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
 exports.createRoom = fn.asyncMw(async (req, res) => {
   const { label, deviceIds } = req.body;
   const name = fn.slugify(label);
-  if (global.modelsBy.Room?.name[name]?.length) {
+  if (modelsBy.Room?.name[name]?.length) {
     return fn.sendResponse(req, res, 409, {
       success: false,
       status: 409,
@@ -72,7 +74,7 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
   const transaction = await sequelize.transaction();
   let roomCopy;
   try {
-    const room = await global.models.Room.create({
+    const room = await models.Room.create({
       name,
       label,
     }, {
@@ -88,7 +90,7 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
       ...JSON.parse(JSON.stringify(room)),
       actions: constants.roomActions,
       devices: deviceIds.map((deviceId) => {
-        const device = global.modelsBy.Device.id[deviceId][0];
+        const device = modelsBy.Device.id[deviceId][0];
         return fn.filterObjectProperties(device, constants.deviceProps);
       }),
     };
@@ -115,7 +117,7 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
 exports.deleteRoom = fn.asyncMw(async (req, res) => {
   const { roomId } = req.params;
 
-  const roomsWithRoomId = global.modelsBy.Room.id[Number(roomId)];
+  const roomsWithRoomId = modelsBy.Room.id[Number(roomId)];
   const room = Number(Boolean(roomsWithRoomId?.length)) > 0 ? roomsWithRoomId[0] : null;
   if (!room) {
     return fn.sendResponse(req, res, 404, {
@@ -129,7 +131,7 @@ exports.deleteRoom = fn.asyncMw(async (req, res) => {
   const transaction = await sequelize.transaction();
   let success;
   try {
-    const deleted = await global.models.Room.destroy({
+    const deleted = await models.Room.destroy({
       where: {
         id: Number(roomId),
       },
@@ -166,7 +168,7 @@ exports.deleteRoom = fn.asyncMw(async (req, res) => {
 
 exports.getRoom = fn.asyncMw(async (req, res) => {
   const { roomId } = req.params;
-  const room = global.rooms.find((room) => room.id === Number(roomId));
+  const room = rooms.find((room) => room.id === Number(roomId));
   if (!room) {
     return fn.sendResponse(req, res, 404, {
       success: false,
@@ -188,7 +190,7 @@ exports.getRooms = fn.asyncMw(async (req, res) => fn.sendResponse(req, res, 200,
   success: true,
   status: 200,
   code: 0,
-  rooms: global.rooms,
+  rooms,
 }));
 
 exports.reassignRoomDevices = fn.asyncMw(async (req, res) => {
@@ -200,7 +202,7 @@ exports.reassignRoomDevices = fn.asyncMw(async (req, res) => {
 
 exports.removeAlias = fn.asyncMw(async (req, res) => {
   const { aliasId } = req.params;
-  if (!global.modelsBy.Alias.id[aliasId]) {
+  if (!modelsBy.Alias.id[aliasId]) {
     return fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
@@ -240,7 +242,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
     deviceIds,
   } = req.body;
 
-  const roomsWithRoomId = global.modelsBy.Room.id[Number(roomId)];
+  const roomsWithRoomId = modelsBy.Room.id[Number(roomId)];
   const room = Number(Boolean(roomsWithRoomId?.length)) > 0 ? roomsWithRoomId[0] : null;
   if (!room) {
     return fn.sendResponse(req, res, 404, {
@@ -253,7 +255,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
 
   let order;
   if (orderBetween) {
-    const orderBetweenRooms = await global.models.Room.findAll({
+    const orderBetweenRooms = await models.Room.findAll({
       where: {
         id: orderBetween,
       },
@@ -280,7 +282,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
   let success;
   if (Object.keys(updateObj).length > 0) {
     try {
-      const updated = await global.models.Room.update(updateObj, {
+      const updated = await models.Room.update(updateObj, {
         where: {
           id: Number(roomId),
         },
@@ -335,7 +337,7 @@ exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => fn.sendResponse(
   success: true,
   status: 200,
   code: 0,
-  rooms: global.rooms.map((room) => roomHelper.transformRoomV2_0_0__V2_1_1(room)),
+  rooms: rooms.map((room) => roomHelper.transformRoomV2_0_0__V2_1_1(room)),
 }));
 
 /**
@@ -344,5 +346,5 @@ exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => fn.sendResponse(
  * @version v1.0.0
  */
 exports.getRoomsV1_0_0 = fn.asyncMw(async (req, res) => (
-  fn.sendResponse(req, res, 200, global.rooms.map((room) => roomHelper.transformRoomV1_0_0(room)))
+  fn.sendResponse(req, res, 200, rooms.map((room) => roomHelper.transformRoomV1_0_0(room)))
 ));

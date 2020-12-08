@@ -247,7 +247,7 @@ class CloudTuya {
       if (delayLogin) {
         const delaySecondsMatch = Number(delayLogin[1]);
         const delaySeconds = (Number.isNaN(delaySecondsMatch) ? 60 : delaySecondsMatch);
-        logger.log(`Delaying Tuya auth for ${delaySeconds} seconds...`);
+        logger.info(`Delaying Tuya auth for ${delaySeconds} seconds...`);
         await delay(delaySeconds * 1000);
         tokens = await this.post(postConfig);
         this.tokens = tokens;

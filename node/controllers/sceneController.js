@@ -1,13 +1,13 @@
-const envVars = module.parent.exports;
 const deviceHelper = require('../helpers/deviceHelper');
 
 const {
   fn,
-} = envVars;
+  scenes,
+} = global;
 
 exports.playScene = fn.asyncMw(async (req, res) => {
   const sceneName = fn.slugify(req.params.sceneName);
-  const scene = global.scenes[sceneName];
+  const scene = scenes[sceneName];
   if (!scene) {
     fn.sendResponse(req, res, 404, {
       success: false,

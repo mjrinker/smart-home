@@ -1,12 +1,11 @@
-const envVars = module.parent.exports;
-
-module.exports = envVars;
-
 const controller = require('../controllers/roomController');
 
-/* eslint-disable camelcase */
 const prefix = '/rooms';
-/* eslint-enable camelcase */
+
+const {
+  fn,
+  versions,
+} = global;
 
 const routeList = [
   {
@@ -17,7 +16,7 @@ const routeList = [
     versions: [
       { versions: ['1.0.0'], func: controller.getRoomsV1_0_0 },
       { versions: ['2.0.0', '2.1.0', '2.1.1'], func: controller.getRoomsV2_0_0__V2_1_1 },
-      { versions: envVars.versions, func: controller.getRooms },
+      { versions, func: controller.getRooms },
     ],
   },
   {
@@ -85,4 +84,4 @@ const routeList = [
   },
 ];
 
-envVars.fn.setRoutes({ prefix, routeList });
+fn.setRoutes({ prefix, routeList });
