@@ -110,17 +110,18 @@ exports.listeners = () => {
   const overrideSleep = 1250;
   global.merossAPI.on('deviceInitialized', (deviceId, deviceDef, device) => {
     device.on('data', async (namespace, payload) => {
-      if (!global.Devices[deviceId]?.Device?.lock) {
-        const name = global.modelsBy.Device?.mfg_id[deviceId][0]?.name;
-        const actions = {};
-        switch (namespace) {
-          case 'Appliance.Control.ToggleX': {
-            const state = !!payload?.togglex[0]?.onoff;
+      const name = global.modelsBy.Device?.mfg_id[deviceId][0]?.name;
+      const actions = {};
+      switch (namespace) {
+        case 'Appliance.Control.ToggleX': {
+          const state = !!payload?.togglex[0]?.onoff;
+          if (global.Devices[deviceId]) {
+            global.Devices[deviceId].Device.state = state;
+          }
+
+          if (!global.Devices[deviceId]?.Device?.lock) {
             const action = state ? 'on' : 'off';
             logger.info('External message', name, action, payload);
-            if (global.Devices[deviceId]) {
-              global.Devices[deviceId].Device.state = state;
-            }
 
             actions[action] = true;
 
@@ -169,36 +170,42 @@ exports.listeners = () => {
                 });
               }
             }
-
-            break;
           }
-          case 'Appliance.Control.Light': {
-            if (global.Devices[deviceId]) {
+
+          break;
+        }
+        case 'Appliance.Control.Light': {
+          if (global.Devices[deviceId]) {
+            const newLightValues = payload?.light;
+            global.Devices[deviceId].Device.lightValues = {
+              brightness: newLightValues?.luminance || -1,
+              color_temp: newLightValues?.temperature || -1,
+              color: (Number.isNaN(Number(newLightValues?.rgb))
+                ? 0xffffff : Number(newLightValues?.rgb)).toString(16),
+            };
+
+            if (!global.Devices[deviceId]?.Device?.lock) {
               logger.info('External message', name, 'light', payload);
-              const newLightValues = payload?.light;
               global.Devices[deviceId].Device.override = false;
               delay(overrideSleep).then(() => {
                 global.Devices[deviceId].Device.override = true;
               });
-
-              global.Devices[deviceId].Device.lightValues = {
-                brightness: newLightValues?.luminance || -1,
-                color_temp: newLightValues?.temperature || -1,
-                color: (Number.isNaN(Number(newLightValues?.rgb))
-                  ? 0xffffff : Number(newLightValues?.rgb)).toString(16),
-              };
             }
+          }
 
-            break;
+          break;
+        }
+        case 'Appliance.System.Online': {
+          if (!global.Devices[deviceId]?.Device?.lock) {
+            logger.dev.info('External message', name, 'isOnline', payload);
           }
-          case 'Appliance.System.Online': {
-            // logger.info('External message', name, 'isOnline', payload);
-            break;
-          }
-          default: {
+          break;
+        }
+        default: {
+          if (!global.Devices[deviceId]?.Device?.lock) {
             logger.info('External message', name, namespace, payload);
-            break;
           }
+          break;
         }
       }
     });

@@ -1,5 +1,5 @@
 UPDATE conditional_actions
-SET `condition` = 'sunset+2h->sunrise'
+SET `condition` = '21:00->sunrise'
 WHERE `condition` = 'sunset-1h->sunrise';
 
 
@@ -28,7 +28,7 @@ VALUES
 
 INSERT INTO conditional_actions (model, model_id, preset_id, action, condition_type, `condition`)
 VALUES
-('room', (SELECT id FROM rooms WHERE name LIKE '%dining%'), (SELECT id FROM presets WHERE model = 'room' AND model_id IN (SELECT id FROM rooms WHERE name LIKE '%dining%') AND name = 'evening'), 'on', 'time', 'sunset+2h->22:00'),
-('group', (SELECT id FROM `groups` WHERE name = 'kitchen_main'), (SELECT id FROM presets WHERE model = 'group' AND model_id IN (SELECT id FROM `groups` WHERE name = 'kitchen_main') AND name = 'evening'), 'on', 'time', 'sunset+2h->22:00'),
+('room', (SELECT id FROM rooms WHERE name LIKE '%dining%'), (SELECT id FROM presets WHERE model = 'room' AND model_id IN (SELECT id FROM rooms WHERE name LIKE '%dining%') AND name = 'evening'), 'on', 'time', '21:00->22:00'),
+('group', (SELECT id FROM `groups` WHERE name = 'kitchen_main'), (SELECT id FROM presets WHERE model = 'group' AND model_id IN (SELECT id FROM `groups` WHERE name = 'kitchen_main') AND name = 'evening'), 'on', 'time', '21:00->22:00'),
 ('room', (SELECT id FROM rooms WHERE name LIKE '%dining%'), (SELECT id FROM presets WHERE model = 'room' AND model_id IN (SELECT id FROM rooms WHERE name LIKE '%dining%') AND name = 'dim'), 'on', 'time', '22:00->sunrise'),
 ('group', (SELECT id FROM `groups` WHERE name = 'kitchen_main'), (SELECT id FROM presets WHERE model = 'group' AND model_id IN (SELECT id FROM `groups` WHERE name = 'kitchen_main') AND name = 'dim'), 'on', 'time', '22:00->sunrise');

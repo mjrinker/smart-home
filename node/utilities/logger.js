@@ -9,9 +9,15 @@ const {
   bgWhite,
   black,
   brightBlack,
+  brightMagenta,
   brightWhite,
-  white,
-} = require('ansicolors');
+  fgDefault,
+  magenta,
+  red,
+  bold,
+} = require('./ansicodes');
+
+const showDebugLogs = Boolean(Number(process.env.SHOW_DEBUG_LOGS)) || (process.env.SHOW_DEBUG_LOGS || '').toLowerCase() !== 'false';
 
 const formatLoggerMessage = (msg) => {
   if (Array.isArray(msg)) {
@@ -23,25 +29,60 @@ const formatLoggerMessage = (msg) => {
   if (typeof msg === 'string') {
     return msg.replace(/\n/g, '\\n');
   }
+  if (msg instanceof Error) {
+    return red(msg.stack.replace(/\n/g, '\\n'));
+  }
   return msg;
 };
 
-exports.logger = {
+const timestamp = () => moment().format('YYYY-MM-DD HH:mm:ss.SSS z');
+
+const timestampLog = () => (global.logOdd ? magenta(`[ ${timestamp()} ]`) : brightMagenta(`[ ${timestamp()} ]`));
+
+const getLogColor = () => (global.logOdd ? fgDefault : brightWhite);
+
+const Logger = () => ({
   debug: async (...message) => {
-    console.debug(bgBrightCyan(brightBlack('  DEBUG  ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
+    if (showDebugLogs) {
+      global.logOdd = !global.logOdd;
+      console.debug(bold(bgBrightCyan(brightBlack('  DEBUG  '))), timestampLog(), getLogColor()(...message.map(formatLoggerMessage)));
+    }
   },
   error: async (...message) => {
-    console.error(bgRed(brightWhite('  ERROR  ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
+    global.logOdd = !global.logOdd;
+    console.error(bold(bgRed(brightWhite('  ERROR  '))), timestampLog(), getLogColor()(...message.map(formatLoggerMessage)));
   },
   info: async (...message) => {
-    console.info(bgBrightGreen(brightBlack('  INFO   ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
+    global.logOdd = !global.logOdd;
+    console.info(bold(bgBrightGreen(brightWhite('  INFO   '))), timestampLog(), getLogColor()(...message.map(formatLoggerMessage)));
   },
   log: async (...message) => {
-    console.log(bgWhite(black('  LOG    ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
+    global.logOdd = !global.logOdd;
+    console.log(bold(bgWhite(brightWhite('  LOG    '))), timestampLog(), getLogColor()(...message.map(formatLoggerMessage)));
   },
   warn: async (...message) => {
-    console.error(bgYellow(white('  WARN   ')), `[ ${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} ]`, ...message.map(formatLoggerMessage));
+    global.logOdd = !global.logOdd;
+    console.error(bold(bgYellow(black('  WARN   '))), timestampLog(), getLogColor()(...message.map(formatLoggerMessage)));
   },
+});
+
+exports.envLogger = (arg) => {
+  if ((typeof arg === 'function' && arg(process.env.ENVIRONMENT)) || arg === process.env.ENVIRONMENT) {
+    return Logger();
+  }
+  const func = async () => {};
+  return {
+    debug: func,
+    error: func,
+    info: func,
+    log: func,
+    warn: func,
+    env: func,
+  };
 };
+
+exports.Logger = Logger;
+
+exports.logger = Logger();
 
 exports.tab = (...message) => message.map(formatLoggerMessage).join('    ');

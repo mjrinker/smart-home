@@ -28,7 +28,7 @@ const {
 
 const getFunctions = require('./utilities/functions');
 const getDataFunctions = require('./utilities/data');
-const { logger, tab } = require('./utilities/logger');
+const { envLogger, Logger, tab } = require('./utilities/logger');
 const merossHelper = require('./helpers/merossHelper');
 
 const CloudTuya = require('./cloudtuya');
@@ -40,12 +40,26 @@ const Light = require('./devices/tuya/light');
 const MerossDevice = require('./devices/meross/device');
 const Bulb = require('./devices/meross/bulb');
 const Thermostat = require('./devices/meross/thermostat');
-// todo add more device classes:
+// TODO add more device classes:
 // const Plug = require('./devices/meross/plug');
 // const Hub = require('./devices/meross/hub');
-// const Humidifier = require('./devices/meross/humidier');
+// const Humidifier = require('./devices/meross/humidifier');
 // const DoorOpener = require('./devices/meross/doorOpener');
 // const Sensor = require('./devices/meross/sensor');
+
+const logger = {
+  ...(Logger()),
+  live: envLogger((env) => ['live', 'prod', 'production'].includes(env)),
+  stg: envLogger((env) => ['stg', 'stage', 'staging'].includes(env)),
+  uat: envLogger((env) => ['uat', 'test', 'testing', 'beta'].includes(env)),
+  dev: envLogger((env) => ['dev', 'develop', 'development', 'local', 'alpha'].includes(env)),
+};
+
+logger.dev.debug('Debug log works!');
+logger.dev.error('Error log works!');
+logger.dev.info('Info log works!');
+logger.dev.log('Log works!');
+logger.dev.warn('Warning log works!');
 
 const logout = (merossAPI) => {
   if (merossAPI) {
@@ -282,35 +296,6 @@ try {
       global[key] = value;
     });
 
-    // global._ = _;
-    // global.app = app;
-    // global.Bulb = Bulb;
-    // global.Climate = Climate;
-    // global.CloudTuya = CloudTuya;
-    // global.DataTypes = DataTypes;
-    // global.delay = delay;
-    // global.express = express;
-    // global.Fan = Fan;
-    // global.fetch = fetch;
-    // global.fs = fs;
-    // global.geoLocation = geoLocation;
-    // global.getSunrise = getSunrise;
-    // global.getSunset = getSunset;
-    // global.Light = Light;
-    // global.logger = logger;
-    // global.logout = logout;
-    // global.MerossDevice = MerossDevice;
-    // global.Model = Model;
-    // global.moment = moment;
-    // global.Op = Op;
-    // global.path = path;
-    // global.sequelize = sequelize;
-    // global.tab = tab;
-    // global.Thermostat = Thermostat;
-    // global.tuyaAPI = tuyaAPI;
-    // global.TuyaDevice = TuyaDevice;
-    // global.versions = _.sortBy(['1.0.0', '2.0.0', '2.1.0', '2.1.1', '3.0.0']);
-
     let fn = getFunctions();
     global.fn = fn;
     const dataFn = getDataFunctions();
@@ -331,6 +316,7 @@ try {
         thermostat: Climate,
         fan: Fan,
         bulb: Light,
+        __ignore: ['scene'],
       },
       meross: {
         bulb: Bulb,
@@ -367,28 +353,31 @@ try {
           userDevIcon: '',
           uuid: deviceId,
         };
-
-        const DeviceType = _.get(global.deviceTypeClassMap, ['tuya', deviceDef.deviceType], null);
-        if (DeviceType) {
-          global.Devices[deviceId] = {
-            deviceDef,
-            Device: new DeviceType({
-              api: tuyaAPI,
-              deviceId,
-              device,
-              deviceDef,
-              online,
-              state: device.data?.state,
-            }),
-          };
+        if (global.deviceTypeClassMap.tuya.__ignore.includes(deviceDef.deviceType)) {
+          logger.dev.warn(`Ignoring device class for Tuya ${deviceDef.deviceType} ${deviceDef.devName}`);
         } else {
-          logger.error(JSON.stringify({
-            level: 'ERROR',
-            message: 'Cannot find matching device class',
-            data: {
+          const DeviceType = _.get(global.deviceTypeClassMap, ['tuya', deviceDef.deviceType], null);
+          if (DeviceType) {
+            global.Devices[deviceId] = {
               deviceDef,
-            },
-          }));
+              Device: new DeviceType({
+                api: tuyaAPI,
+                deviceId,
+                device,
+                deviceDef,
+                online,
+                state: device.data?.state,
+              }),
+            };
+          } else {
+            logger.error(JSON.stringify({
+              level: 'ERROR',
+              message: 'Cannot find matching device class',
+              data: {
+                deviceDef,
+              },
+            }));
+          }
         }
       });
     });
@@ -451,9 +440,6 @@ try {
     });
 
     process.on('SIGINT', () => {
-      logout(global.merossAPI);
-    });
-    process.on('SIGQUIT', () => {
       logout(global.merossAPI);
     });
 
