@@ -8,13 +8,13 @@ const {
   bgYellow,
   bgWhite,
   black,
+  bold,
   brightBlack,
-  brightMagenta,
   brightWhite,
   fgDefault,
-  magenta,
   red,
-  bold,
+  steelBlue3,
+  steelBlue4,
 } = require('./ansicodes');
 
 const showDebugLogs = Boolean(Number(process.env.SHOW_DEBUG_LOGS)) || (process.env.SHOW_DEBUG_LOGS || '').toLowerCase() !== 'false';
@@ -35,9 +35,9 @@ const formatLoggerMessage = (msg) => {
   return msg;
 };
 
-const timestamp = () => moment().format('YYYY-MM-DD HH:mm:ss.SSS z');
+const timestamp = () => moment().tz(process.env.TZ || 'UTC').format('YYYY-MM-DD HH:mm:ss.SSS z');
 
-const timestampLog = () => (global.logOdd ? magenta(`[ ${timestamp()} ]`) : brightMagenta(`[ ${timestamp()} ]`));
+const timestampLog = () => (global.logOdd ? steelBlue4(`[ ${timestamp()} ]`) : steelBlue3(`[ ${timestamp()} ]`));
 
 const getLogColor = () => (global.logOdd ? fgDefault : brightWhite);
 

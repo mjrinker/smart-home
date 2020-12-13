@@ -135,7 +135,7 @@ try {
               const dbUpdateDirPath = path.join(__dirname, 'sql', 'db_updates');
               const dbUpdateFilenames = fs.readdirSync(dbUpdateDirPath);
 
-              const dbUpdateNameRegExp = new RegExp(`^${moment().format('YYYYMMDD')}\\d{6}_${dbUpdateSuffix}`);
+              const dbUpdateNameRegExp = new RegExp(`^${moment().tz(process.env.TZ || 'UTC').format('YYYYMMDD')}\\d{6}_${dbUpdateSuffix}`);
               const dbUpdateNameMatch = _.find(dbUpdateFilenames, (filename) => (
                 filename.match(dbUpdateNameRegExp)
               ));
@@ -144,7 +144,7 @@ try {
               if (dbUpdateNameMatch) {
                 dbUpdateName = dbUpdateNameMatch.replace(/\.sql$/, '');
               } else {
-                dbUpdateName = `${moment().format('YYYYMMDDHHmmss')}_${dbUpdateSuffix}`;
+                dbUpdateName = `${moment().tz(process.env.TZ || 'UTC').format('YYYYMMDDHHmmss')}_${dbUpdateSuffix}`;
               }
 
               const dbUpdateFilename = `${dbUpdateName}.sql`;

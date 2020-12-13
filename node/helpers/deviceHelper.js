@@ -414,7 +414,7 @@ exports.performDeviceActions = async (deviceActions) => {
 
       if (deviceNickname.match(/^\*/)) {
         const deviceType = deviceNickname.match(/^\*(.*)/)[1].toLowerCase();
-        fn.filterMap(moreDeviceActions.push(...Object.values(deviceConfig),
+        moreDeviceActions.push(...fn.filterMap(Object.values(deviceConfig),
           (device) => (
             _.isPlainObject(device) && (!deviceType || device.type === deviceType)
           ),

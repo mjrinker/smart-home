@@ -70,7 +70,7 @@ module.exports = () => {
 
   fn.filterMap = (collection, filterCallback, mapCallback) => {
     const array = [];
-    collection.forEach((element, index) => {
+    collection?.forEach((element, index) => {
       let condition = null;
       if (_.isFunction(filterCallback)) {
         condition = filterCallback(element, index);

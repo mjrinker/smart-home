@@ -371,6 +371,10 @@ codes.rgb = (r, g, b, ...s) => `\u001b[38;2;${r};${g};${b}m${s.join(' ')}'\u001b
 
 codes.bgRGB = (r, g, b, ...s) => `\u001b[48;2;${r};${g};${b}m${s.join(' ')}'\u001b[49m'`;
 
+codes.xtermColor = (c, ...s) => `\u001b[38;5;${c}m${s.join(' ')}'\u001b[39m'`;
+
+codes.bgXtermColor = (c, ...s) => `\u001b[48;5;${c}m${s.join(' ')}'\u001b[49m'`;
+
 module.exports = codes;
 codes.open = open;
 codes.close = close;
