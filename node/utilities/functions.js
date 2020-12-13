@@ -6,7 +6,7 @@ const {
   brightBlack,
   brightWhite,
   white,
-} = require('ansicolors');
+} = require('./ansicodes');
 
 module.exports = () => {
   const fn = {};

@@ -24,7 +24,7 @@ const {
   brightGreen,
   red,
   yellow,
-} = require('ansicolors');
+} = require('./utilities/ansicodes');
 
 const getFunctions = require('./utilities/functions');
 const getDataFunctions = require('./utilities/data');

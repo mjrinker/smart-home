@@ -3,7 +3,7 @@ const {
   yellow,
   brightBlue,
   red,
-} = require('ansicolors');
+} = require('../utilities/ansicodes');
 
 const MEROSS_URL = 'https://iot.meross.com';
 const LOGOUT_URL = `${MEROSS_URL}/v1/Profile/logout`;
