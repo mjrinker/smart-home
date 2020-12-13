@@ -9,6 +9,7 @@ const express = require('express');
 const fetch = require('node-fetch');
 const fs = require('fs');
 const { getSunrise, getSunset } = require('sunrise-sunset-js');
+const isReachable = require('is-reachable');
 const MerossCloud = require('meross-cloud');
 const moment = require('moment-timezone');
 const path = require('path');
@@ -81,6 +82,14 @@ const logout = (merossAPI) => {
 try {
   (async () => {
   // STEP 1: make connections
+    let hasInternetConnection = false;
+    while (!hasInternetConnection) {
+      hasInternetConnection = await isReachable('google.com:443');
+      if (!hasInternetConnection) {
+        await logger.warn('Internet not connected, checking again in 15 seconds...');
+        await delay(15000);
+      }
+    }
     const app = express();
     const port = process.env.PORT;
     const dbUpdateSuffix = process.env.DB_UPDATE_SUFFIX || uuid();
@@ -276,6 +285,7 @@ try {
       geoLocation,
       getSunrise,
       getSunset,
+      isReachable,
       Light,
       logger,
       logout,
