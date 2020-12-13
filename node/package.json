@@ -23,6 +23,7 @@
     "express": "^4.17.1",
     "is-reachable": "^5.0.0",
     "lodash": "^4.17.19",
+    "mariadb": "^2.5.2",
     "meross-cloud": "github:Apollon77/meross-cloud",
     "moment-timezone": "^0.5.32",
     "mysql2": "^2.1.0",
