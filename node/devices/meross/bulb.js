@@ -78,7 +78,11 @@ class Bulb extends MerossDevice {
           data: {
             online: true,
             state: true,
-            light_state: lightValues,
+            light_state: {
+              brightness: lightValues.luminance,
+              color_temp: lightValues.temperature,
+              color: lightValues.rgb,
+            },
           },
           name: this.name,
           icon: this.deviceDef.userDevIcon || this.deviceDef.devIconId,
