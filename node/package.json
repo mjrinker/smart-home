@@ -27,7 +27,7 @@
     "meross-cloud": "github:Apollon77/meross-cloud",
     "moment-timezone": "^0.5.32",
     "mysql2": "^2.1.0",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^2.6.1",
     "paho-mqtt": "^1.1.0",
     "request": "^2.88.0",
     "sequelize": "^6.3.4",

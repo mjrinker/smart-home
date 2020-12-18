@@ -19,6 +19,22 @@ class Bulb extends MerossDevice {
     this.controlLight = promisify(this.device.controlLight).bind(this.device);
   }
 
+  async turnOn() {
+    const response = await super.turnOn();
+    if (response?.success && response?.device?.data) {
+      response.device.data.light_state = this.lightValues;
+    }
+    return response;
+  }
+
+  async turnOff() {
+    const response = await super.turnOff();
+    if (response?.success && response?.device?.data) {
+      response.device.data.light_state = this.lightValues;
+    }
+    return response;
+  }
+
   async setLightValues(features = { brightness: null, color: null, temperature: null }) {
     let mode = 0;
     if (features.color) {
