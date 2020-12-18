@@ -31,7 +31,11 @@ class MerossDevice {
 
   async turnOn() {
     try {
-      this.controlToggleX(0, true).catch(() => {});
+      const previousState = this.state;
+      this.state = true;
+      this.controlToggleX(0, true).catch(() => {
+        this.state = previousState;
+      });
       return {
         success: true,
         device: {
@@ -60,7 +64,11 @@ class MerossDevice {
 
   async turnOff() {
     try {
-      this.controlToggleX(0, false).catch(() => {});
+      const previousState = this.state;
+      this.state = false;
+      this.controlToggleX(0, false).catch(() => {
+        this.state = previousState;
+      });
       return {
         success: true,
         device: {

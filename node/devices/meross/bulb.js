@@ -64,13 +64,19 @@ class Bulb extends MerossDevice {
     const lightValues = {
       capacity: mode, // 1 = RGB, 2 = TEMPERATURE, 3 = (not supported), 4 = LUMINANCE, 5 = RGB_LUMINANCE, 6 = TEMPERATURE_LUMINANCE
       channel: 0,
-      rgb: parseInt(features.color, 16) || this.lightValues.color,
-      temperature: features.temperature || this.lightValues.color_temp,
       luminance: features.brightness || this.lightValues.brightness,
+      temperature: features.temperature || this.lightValues.color_temp,
+      rgb: parseInt(features.color, 16) || this.lightValues.color,
     };
 
     try {
-      this.controlLight(lightValues).catch(() => {});
+      const previousLightState = this.lightValues;
+      this.lightValues.brightness = lightValues.luminance;
+      this.lightValues.color_temp = lightValues.temperature;
+      this.lightValues.color = lightValues.rgb;
+      this.controlLight(lightValues).catch(() => {
+        this.lightValues = previousLightState;
+      });
       return {
         success: true,
         device: {
