@@ -366,35 +366,49 @@ exports.performDeviceAction = async (deviceData) => {
             return;
           }
 
-          if (!deviceData.presets || !deviceData.presets[presetName]) {
-            logger.warn(`Preset not found: ${presetName} for device ${deviceData.nickname}`);
-            errors.push({
-              success: false,
-              status: 404,
-              error: 'PRESET_NOT_FOUND',
-              message: `Cannot find preset ${presetName} for device ${deviceData.nickname}`,
-            });
+          let preset;
+          if (value === '__next') {
+            preset = Device.presets.next()?.actions;
+          } else {
+            if (!deviceData.presets || !deviceData.presets[presetName]) {
+              logger.warn(`Preset not found: ${presetName} for device ${deviceData.nickname}`);
+              errors.push({
+                success: false,
+                status: 404,
+                error: 'PRESET_NOT_FOUND',
+                message: `Cannot find preset ${presetName} for device ${deviceData.nickname}`,
+              });
 
-            return;
+              return;
+            }
+
+            preset = deviceData.presets[presetName];
+            if (typeof preset === 'string') {
+              preset = {
+                [preset]: true,
+              };
+            }
           }
 
-          let preset = deviceData.presets[presetName];
-
-          if (typeof preset === 'string') {
-            preset = {
-              [preset]: true,
+          if (preset) {
+            const presetDeviceData = {
+              ...deviceData,
+              actions: exports.combineLightValueActions(preset, Device),
             };
+
+            exports.performDeviceAction(presetDeviceData).then((response) => {
+              successes.push(...response.successes);
+              errors.push(...response.errors);
+            });
+          } else {
+            successes.push({
+              success: true,
+              device: {
+                ...deviceData,
+                Device: Object.fromEntries(Object.entries(Device).filter(([key]) => key !== 'api')),
+              },
+            });
           }
-
-          const presetDeviceData = {
-            ...deviceData,
-            actions: exports.combineLightValueActions(preset, Device),
-          };
-
-          exports.performDeviceAction(presetDeviceData).then((response) => {
-            successes.push(...response.successes);
-            errors.push(...response.errors);
-          });
 
           break;
         }

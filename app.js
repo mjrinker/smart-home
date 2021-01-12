@@ -318,6 +318,8 @@ try {
     global.rooms = dataFn.getRoomsConfig(global.modelsBy);
     global.colors = dataFn.getColorsConfig(global.modelsBy);
     global.deviceConfig = await dataFn.getDeviceConfig(global.modelsBy);
+    global.deviceConfigByMfgId = _.keyBy(Object.values(global.deviceConfig)
+      .filter((device) => _.isPlainObject(device) && device.mfg_id), 'mfg_id');
 
     global.deviceTypeClassMap = {
       tuya: {

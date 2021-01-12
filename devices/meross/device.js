@@ -23,6 +23,23 @@ class MerossDevice {
     this.override = true;
     this.lock = false;
 
+    this.presets = { values: options.presets || [] };
+    this.presets.iterator = this.presets.values[Symbol.iterator]();
+    this.presets.next = () => {
+      let next = this.presets.iterator.next();
+      if (next.done) {
+        this.presets.iterator = this.presets.values[Symbol.iterator]();
+        next = this.presets.iterator.next();
+      }
+      return next.value;
+    };
+    this.presets.reset = () => {
+      let next;
+      do {
+        next = this.presets.iterator.next();
+      } while (!next.done);
+    };
+
     this.controlToggleX = promisify(this.device.controlToggleX).bind(this.device);
     this.getSystemAllData = promisify(this.device.getSystemAllData).bind(this.device);
     this.getOnlineStatus = promisify(this.device.getOnlineStatus).bind(this.device);

@@ -8,6 +8,28 @@ const {
 const MEROSS_URL = 'https://iot.meross.com';
 const LOGOUT_URL = `${MEROSS_URL}/v1/Profile/logout`;
 
+const getANSIColor = (event) => {
+  switch (event) {
+    case 'connect':
+    // falls through
+    case 'connected': {
+      return brightGreen;
+    }
+    case 'reconnect': {
+      return yellow;
+    }
+    case 'close': {
+      return brightBlue;
+    }
+    case 'error': {
+      return red;
+    }
+    default: {
+      return (string) => string;
+    }
+  }
+};
+
 exports.logout = (merossAPI, callback) => {
   merossAPI.disconnectAll(true);
   merossAPI.authenticatedPost(LOGOUT_URL, {}, callback);
@@ -21,6 +43,7 @@ exports.listeners = () => {
     _,
     Bulb,
     delay,
+    deviceConfigByMfgId,
     deviceTypeClassMap,
     logger,
   } = global;
@@ -36,6 +59,8 @@ exports.listeners = () => {
             deviceId,
             device,
             deviceDef,
+            presets: Object.entries(deviceConfigByMfgId[deviceId]?.presets || {})
+              .map(([name, actions]) => ({ name, actions })) || [],
           }) : null,
         };
       } else {
@@ -49,31 +74,7 @@ exports.listeners = () => {
       }
     }
 
-    let ansiColor;
-    switch (event) {
-      case 'connect':
-      // falls through
-      case 'connected': {
-        ansiColor = brightGreen;
-        break;
-      }
-      case 'reconnect': {
-        ansiColor = yellow;
-        break;
-      }
-      case 'close': {
-        ansiColor = brightBlue;
-        break;
-      }
-      case 'error': {
-        ansiColor = red;
-        break;
-      }
-      default: {
-        ansiColor = (string) => string;
-      }
-    }
-
+    const ansiColor = getANSIColor(event);
     logger.info(deviceDef.devName, '.'.repeat(Math.abs(30 - deviceDef.devName.length)), ansiColor(event));
 
     if (['connect', 'connected', 'reconnect'].includes(event)) {
