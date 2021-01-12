@@ -20,12 +20,40 @@ const {
   tuyaAPI,
 } = global;
 
-exports.combineLightValueActions = (actions) => {
+exports.calculateNewLightValue = (lightValue, lightProperty, actions, Device) => {
+  let mutableLightValue = lightValue;
+  const currentLightValue = Device.lightValues[lightProperty];
+  if (mutableLightValue) {
+    if (`${mutableLightValue}`.substring(0, 1) === '+') {
+      if (Device) {
+        mutableLightValue = currentLightValue + Number(mutableLightValue.replace(/\D/g, ''));
+        mutableLightValue = mutableLightValue > 100 ? 100 : mutableLightValue;
+      } else {
+        mutableLightValue = null;
+      }
+    } else if (`${mutableLightValue}`.substring(0, 1) === '-') {
+      if (Device) {
+        mutableLightValue = currentLightValue - Number(mutableLightValue.replace(/\D/g, ''));
+        mutableLightValue = mutableLightValue < 1 ? 1 : mutableLightValue;
+      } else {
+        mutableLightValue = null;
+      }
+    }
+  }
+
+  return mutableLightValue;
+};
+
+exports.combineLightValueActions = (actions, Device) => {
   const newActions = _.cloneDeep(actions);
-  const brightnessValue = newActions.brightness || newActions.luminance;
+  const colorValue = newActions.color;
+  const brightnessValue = exports.calculateNewLightValue(newActions.brightness || newActions.luminance, 'brightness', newActions, Device);
+  const temperatureValue = exports.calculateNewLightValue(newActions.temperature, 'color_temp', newActions, Device);
+  delete newActions.luminance;
+  newActions.brightness = brightnessValue;
+  newActions.temperature = temperatureValue;
+
   if (brightnessValue) {
-    const colorValue = newActions.color;
-    const temperatureValue = newActions.temperature;
     if (colorValue) {
       newActions.light = {
         brightness: brightnessValue,
@@ -222,7 +250,7 @@ exports.performDeviceAction = async (deviceData) => {
             return [preset];
           }
 
-          return Object.keys(exports.combineLightValueActions(preset));
+          return Object.keys(exports.combineLightValueActions(preset, Device));
         }
 
         return [];
@@ -360,7 +388,7 @@ exports.performDeviceAction = async (deviceData) => {
 
           const presetDeviceData = {
             ...deviceData,
-            actions: exports.combineLightValueActions(preset),
+            actions: exports.combineLightValueActions(preset, Device),
           };
 
           exports.performDeviceAction(presetDeviceData).then((response) => {
@@ -504,7 +532,7 @@ exports.performDeviceActions = async (deviceActions) => {
 
         Device.override = deviceActionCopy.timeBased !== false;
 
-        deviceData.actions = exports.combineLightValueActions(deviceActionCopy.actions);
+        deviceData.actions = exports.combineLightValueActions(deviceActionCopy.actions, Device);
         exports.performDeviceAction(deviceData).then((response) => {
           const responseArray = Array.isArray(response) ? [...response] : [response];
           responseArray.forEach((responseObj) => {

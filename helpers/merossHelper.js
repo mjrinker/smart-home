@@ -155,7 +155,10 @@ exports.listeners = () => {
                     const unpackedPreset = preset ? deviceData.presets[preset] : timeBasedActions;
                     if (unpackedPreset && !_.isEqual(actions, unpackedPreset)) {
                       deviceData.actions = (
-                        deviceHelper.combineLightValueActions(timeBasedActions)
+                        deviceHelper.combineLightValueActions(
+                          timeBasedActions,
+                          global.Devices[deviceId].Device,
+                        )
                       );
                       deviceHelper.performDeviceAction(deviceData).then(() => {
                         global.Devices[deviceId].Device.override = true;
