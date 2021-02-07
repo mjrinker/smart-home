@@ -209,35 +209,20 @@ module.exports = () => {
 
     let startTimeDay = startTimeToday;
     let endTimeDay = endTimeToday;
-    let startDayString = 'today';
-    let endDayString = 'today';
 
     if (startTimeToday > endTimeToday) {
-      startDayString = 'today_x';
-      endDayString = 'today_x';
       if (now < startTimeToday && now < endTimeToday) {
         startTimeDay = startTimeYesterday;
-        startDayString = 'yesterday_x';
       }
 
       if (now > endTimeToday) {
         endTimeDay = endTimeTomorrow;
-        endDayString = 'tomorrow_x';
       }
     }
 
     const start = startTime ? startTimeDay : yesterday;
     const end = endTime ? endTimeDay : tomorrow;
-    startDayString = startTime ? startDayString : 'yesterday';
-    endDayString = endTime ? endDayString : 'tomorrow';
-    return {
-      inRange: now >= start && now < end,
-      now: `${now.toDateString()} ${now.toTimeString()}`,
-      startTime: `${start.toDateString()} ${start.toTimeString()}`,
-      endTime: `${end.toDateString()} ${end.toTimeString()}`,
-      startDay: startDayString,
-      endDay: endDayString,
-    };
+    return now >= start && now < end;
   };
 
   fn.parseTime = (timeString, suntimeDay = new Date()) => {

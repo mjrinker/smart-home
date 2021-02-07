@@ -161,7 +161,7 @@ exports.getTimeBasedActions = async ({ deviceIdInfo, deviceAction, deviceData })
                   const timesSplit = times.split('->');
                   const startTime = timesSplit[0];
                   const endTime = timesSplit[1];
-                  return times !== 'default' && fn.isInTimeRange(startTime, endTime)?.inRange;
+                  return times !== 'default' && fn.isInTimeRange(startTime, endTime);
                 },
               );
 
