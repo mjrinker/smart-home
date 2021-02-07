@@ -8,7 +8,10 @@ const { exec } = require('child_process');
 const express = require('express');
 const fetch = require('node-fetch');
 const fs = require('fs');
-const { getSunrise, getSunset } = require('sunrise-sunset-js');
+const {
+  getSunrise: getSunriseOriginal,
+  getSunset: getSunsetOriginal,
+} = require('sunrise-sunset-js');
 const isReachable = require('is-reachable');
 const MerossCloud = require('meross-cloud');
 const moment = require('moment-timezone');
@@ -61,6 +64,17 @@ logger.dev.error('Error log works!');
 logger.dev.info('Info log works!');
 logger.dev.log('Log works!');
 logger.dev.warn('Warning log works!');
+
+const getSunrise = getSunriseOriginal;
+const getSunset = (latitude, longitude, date) => {
+  const sunsetDate = getSunsetOriginal(latitude, longitude, date);
+  if (sunsetDate.getDate() === date.getDate()) {
+    return sunsetDate;
+  }
+
+  date.setDate(date.getDate() - (sunsetDate.getDate() - date.getDate()));
+  return getSunsetOriginal(latitude, longitude, date);
+};
 
 const logout = (merossAPI) => {
   if (merossAPI) {

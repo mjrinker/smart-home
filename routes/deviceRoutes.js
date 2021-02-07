@@ -39,6 +39,20 @@ const routeList = [
       { versions: ['2.1.0', '2.1.1', '3.0.0'], func: controller.getDeviceState },
     ],
   },
+  {
+    path: '/timeRange',
+    method: 'post',
+    controller: 'deviceController',
+    auth: false, // TODO set this to true
+    versions: [
+      {
+        versions,
+        func: (req, res) => res.json(req.body.times.map((time) => (
+          fn.isInTimeRange(time.start, time.end, new Date(time.now))
+        ))),
+      },
+    ],
+  },
 ];
 
 fn.setRoutes({ prefix, routeList });

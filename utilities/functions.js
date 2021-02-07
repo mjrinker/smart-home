@@ -154,29 +154,90 @@ module.exports = () => {
     }).filter((amount) => amount).reduce((a, b) => a + b, 0);
   };
 
-  fn.isInTimeRange = (startTime, endTime) => {
-    const now = new Date();
+  fn.isInTimeRange = (startTime, endTime, overrideDate = new Date()) => {
+    const now = new Date(overrideDate);
     const today = new Date(now);
     const yesterday = new Date(today);
     const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
     yesterday.setDate(today.getDate() - 1);
+    tomorrow.setDate(today.getDate() + 1);
+    const yesterdayMidnight = new Date(yesterday);
+    const todayMidnight = new Date(today);
+    const tomorrowMidnight = new Date(tomorrow);
+    yesterdayMidnight.setHours(0, 0, 0);
+    todayMidnight.setHours(0, 0, 0);
+    tomorrowMidnight.setHours(0, 0, 0);
 
-    let startSuntimeDay = tomorrow;
-    if (startTime.match(/^sunset/i)
-      && now < getSunrise(geoLocation.lat, geoLocation.lng, tomorrow)) {
-      startSuntimeDay = today;
+    const startIsSunrise = startTime.match(/^sunrise/i);
+    const startIsSunset = startTime.match(/^sunset/i);
+    const endIsSunrise = endTime.match(/^sunrise/i);
+    const endIsSunset = endTime.match(/^sunset/i);
+
+    const sunriseYesterday = getSunrise(geoLocation.lat, geoLocation.lng, yesterdayMidnight);
+    const sunriseToday = getSunrise(geoLocation.lat, geoLocation.lng, todayMidnight);
+    const sunriseTomorrow = getSunrise(geoLocation.lat, geoLocation.lng, tomorrowMidnight);
+    const sunsetYesterday = getSunset(geoLocation.lat, geoLocation.lng, yesterdayMidnight);
+    const sunsetToday = getSunset(geoLocation.lat, geoLocation.lng, todayMidnight);
+    const sunsetTomorrow = getSunset(geoLocation.lat, geoLocation.lng, tomorrowMidnight);
+
+    let startTimeYesterday;
+    let startTimeToday;
+    let endTimeToday;
+    let endTimeTomorrow;
+
+    if (startIsSunrise) {
+      startTimeYesterday = sunriseYesterday;
+      startTimeToday = sunriseToday;
+    } else if (startIsSunset) {
+      startTimeYesterday = sunsetYesterday;
+      startTimeToday = sunsetToday;
+    } else {
+      startTimeYesterday = new Date(`${yesterday.toDateString()} ${startTime}`);
+      startTimeToday = new Date(`${today.toDateString()} ${startTime}`);
     }
 
-    let endSuntimeDay = tomorrow;
-    if (endTime.match(/^sunrise/i)
-      && now < getSunset(geoLocation.lat, geoLocation.lng, tomorrow)) {
-      endSuntimeDay = today;
+    if (endIsSunrise) {
+      endTimeToday = sunriseToday;
+      endTimeTomorrow = sunriseTomorrow;
+    } else if (endIsSunset) {
+      endTimeToday = sunsetToday;
+      endTimeTomorrow = sunsetTomorrow;
+    } else {
+      endTimeToday = new Date(`${today.toDateString()} ${endTime}`);
+      endTimeTomorrow = new Date(`${tomorrow.toDateString()} ${endTime}`);
     }
 
-    const start = startTime ? fn.parseTime(startTime, startSuntimeDay) : yesterday;
-    const end = endTime ? fn.parseTime(endTime, endSuntimeDay) : tomorrow;
-    return now >= start && now < end;
+    let startTimeDay = startTimeToday;
+    let endTimeDay = endTimeToday;
+    let startDayString = 'today';
+    let endDayString = 'today';
+
+    if (startTimeToday > endTimeToday) {
+      startDayString = 'today_x';
+      endDayString = 'today_x';
+      if (now < startTimeToday && now < endTimeToday) {
+        startTimeDay = startTimeYesterday;
+        startDayString = 'yesterday_x';
+      }
+
+      if (now > endTimeToday) {
+        endTimeDay = endTimeTomorrow;
+        endDayString = 'tomorrow_x';
+      }
+    }
+
+    const start = startTime ? startTimeDay : yesterday;
+    const end = endTime ? endTimeDay : tomorrow;
+    startDayString = startTime ? startDayString : 'yesterday';
+    endDayString = endTime ? endDayString : 'tomorrow';
+    return {
+      inRange: now >= start && now < end,
+      now: `${now.toDateString()} ${now.toTimeString()}`,
+      startTime: `${start.toDateString()} ${start.toTimeString()}`,
+      endTime: `${end.toDateString()} ${end.toTimeString()}`,
+      startDay: startDayString,
+      endDay: endDayString,
+    };
   };
 
   fn.parseTime = (timeString, suntimeDay = new Date()) => {
@@ -208,20 +269,22 @@ module.exports = () => {
           date.setTime(date.getTime() - offsetMilliseconds);
         }
       }
-    } else if (timeString.match(/\d{2}:\d{2}(?::\d{2})?/)) {
-      const timeUnits = timeString.match(/(\d{2}):(\d{2})(:\d{2})?/);
-      const hours = parseInt(timeUnits[1] || '0', 10);
-      const minutes = parseInt(timeUnits[2] || '0', 10);
-      const seconds = parseInt(timeUnits[3] || '0', 10);
-      date.setHours(hours, minutes, seconds);
-    } else if (timeString === 'default') {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      return yesterday;
     } else {
-      const error = new Error(`Invalid time ${timeString}`);
-      error.name = 'INVALID_TIME';
-      throw error;
+      const timeUnits = timeString.match(/(\d{2}):(\d{2})(:\d{2})?/);
+      if (timeUnits) {
+        const hours = parseInt(timeUnits[1] || '0', 10);
+        const minutes = parseInt(timeUnits[2] || '0', 10);
+        const seconds = parseInt(timeUnits[3] || '0', 10);
+        date.setHours(hours, minutes, seconds);
+      } else if (timeString === 'default') {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday;
+      } else {
+        const error = new Error(`Invalid time ${timeString}`);
+        error.name = 'INVALID_TIME';
+        throw error;
+      }
     }
 
     return date;
