@@ -22,7 +22,7 @@ const {
 
 exports.calculateNewLightValue = (lightValue, lightProperty, actions, Device) => {
   let mutableLightValue = lightValue;
-  const currentLightValue = Device.lightValues[lightProperty];
+  const currentLightValue = Device?.lightValues && Device.lightValues[lightProperty];
   if (mutableLightValue) {
     if (`${mutableLightValue}`.substring(0, 1) === '+') {
       if (Device) {
