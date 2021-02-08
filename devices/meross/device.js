@@ -75,6 +75,7 @@ class MerossDevice {
         status: 500,
         error: 'TOGGLE_ERROR',
         message: `Cannot turn device on: mfg_id ${this.deviceId}`,
+        originalError: error,
       };
     }
   }
@@ -108,6 +109,7 @@ class MerossDevice {
         status: 500,
         error: 'TOGGLE_ERROR',
         message: `Cannot turn device on: mfg_id ${this.deviceId}`,
+        originalError: error,
       };
     }
   }

@@ -200,9 +200,7 @@ exports.listeners = () => {
           break;
         }
         case 'Appliance.System.Online': {
-          if (!global.Devices[deviceId]?.Device?.lock) {
-            logger.dev.info('External message', name, 'isOnline', payload);
-          }
+          device.connect();
           break;
         }
         default: {

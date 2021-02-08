@@ -50,10 +50,13 @@ exports.combineLightValueActions = (actions, Device) => {
   const brightnessValue = exports.calculateNewLightValue(newActions.brightness || newActions.luminance, 'brightness', newActions, Device);
   const temperatureValue = exports.calculateNewLightValue(newActions.temperature, 'color_temp', newActions, Device);
   delete newActions.luminance;
-  newActions.brightness = brightnessValue;
-  newActions.temperature = temperatureValue;
+
+  if (temperatureValue) {
+    newActions.temperature = temperatureValue;
+  }
 
   if (brightnessValue) {
+    newActions.brightness = brightnessValue;
     if (colorValue) {
       newActions.light = {
         brightness: brightnessValue,
@@ -202,15 +205,15 @@ exports.performDeviceAction = async (deviceData) => {
   const errors = [];
   let totalActions = 0;
   if (Device) {
-    if (!_.get(deviceData, 'data.online')) {
+    if (!deviceData?.data?.online) {
       return {
         success: false,
         successes: [],
         errors: [{
           success: false,
-          status: 400,
+          status: 500,
           error: 'DEVICE_OFFLINE',
-          message: `Device ${deviceData.nickname} is offline`,
+          message: `Device ${Device.name} is offline`,
         }],
       };
     }
@@ -236,7 +239,8 @@ exports.performDeviceAction = async (deviceData) => {
           success: false,
           status: 500,
           error: 'ACTION_UNSUCCESSFUL',
-          message: `Action ${action} was not performed on ${deviceData.nickname}`,
+          message: `Action ${action} was not performed on ${Device.name}`,
+          originalError: response?.originalError,
         });
       }
     };
@@ -284,7 +288,7 @@ exports.performDeviceAction = async (deviceData) => {
               success: false,
               status: 400,
               error: 'ACTION_NOT_SUPPORTED',
-              message: `Device ${deviceData.nickname} does not support action ${action}`,
+              message: `Device ${Device.name} does not support action ${action}`,
             });
           }
 
@@ -301,7 +305,7 @@ exports.performDeviceAction = async (deviceData) => {
               success: false,
               status: 400,
               error: 'ACTION_NOT_SUPPORTED',
-              message: `Device ${deviceData.nickname} does not support action ${action}`,
+              message: `Device ${Device.name} does not support action ${action}`,
             });
           }
 
@@ -316,7 +320,7 @@ exports.performDeviceAction = async (deviceData) => {
               success: false,
               status: 400,
               error: 'ACTION_NOT_SUPPORTED',
-              message: `Device ${deviceData.nickname} does not support action ${action}`,
+              message: `Device ${Device.name} does not support action ${action}`,
             });
           }
 
@@ -336,7 +340,7 @@ exports.performDeviceAction = async (deviceData) => {
               success: false,
               status: 400,
               error: 'ACTION_NOT_SUPPORTED',
-              message: `Device ${deviceData.nickname} does not support action ${action}`,
+              message: `Device ${Device.name} does not support action ${action}`,
             });
           }
 
@@ -371,12 +375,12 @@ exports.performDeviceAction = async (deviceData) => {
             preset = Device.presets.next()?.actions;
           } else {
             if (!deviceData.presets || !deviceData.presets[presetName]) {
-              logger.warn(`Preset not found: ${presetName} for device ${deviceData.nickname}`);
+              logger.warn(`Preset not found: ${presetName} for device ${Device.name}`);
               errors.push({
                 success: false,
                 status: 404,
                 error: 'PRESET_NOT_FOUND',
-                message: `Cannot find preset ${presetName} for device ${deviceData.nickname}`,
+                message: `Cannot find preset ${presetName} for device ${Device.name}`,
               });
 
               return;
@@ -552,7 +556,8 @@ exports.performDeviceActions = async (deviceActions) => {
           responseArray.forEach((responseObj) => {
             if (responseObj.successes) {
               successes.push(...responseObj.successes);
-            } else if (responseObj.errors) {
+            }
+            if (responseObj.errors) {
               errors.push(...responseObj.errors);
             }
           });
