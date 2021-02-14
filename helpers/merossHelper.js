@@ -200,7 +200,7 @@ exports.listeners = () => {
           break;
         }
         case 'Appliance.System.Online': {
-          device.connect();
+          // device.connect();
           break;
         }
         default: {
