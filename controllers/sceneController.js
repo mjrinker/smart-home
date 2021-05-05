@@ -19,6 +19,9 @@ exports.playScene = fn.asyncMw(async (req, res) => {
 
   const deviceActions = scene.sceneActions.map((sceneAction) => {
     const sceneActionModel = sceneAction[sceneAction.model];
+    if (!sceneActionModel) {
+      return null;
+    }
     const modelName = sceneActionModel.name;
     const actions = {
       [sceneAction.action]: fn.castActionValue(sceneAction.value, sceneAction.datatype),
@@ -28,7 +31,7 @@ exports.playScene = fn.asyncMw(async (req, res) => {
       nickname: modelName,
       actions,
     };
-  });
+  }).filter((deviceAction) => deviceAction);
 
   const response = await deviceHelper.performDeviceActions(deviceActions);
   if (response && response.status) {
