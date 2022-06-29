@@ -22,7 +22,7 @@ const triggerRegexesCallbacks = {
         actions: [match.groups.actionA, match.groups.actionB].map((action, index) => ({
           action: action?.match(/(?:color )?temp(?:erature)?/i) ? 'temperature' : 'brightness',
           value: Number.parseInt(index === 0 ? match.groups.valueA : match.groups.valueB, 10),
-        })),
+        })).filter((action) => !Number.isNaN(action.value)),
       }))),
   [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<actionA>color|brightness) )?to (?<valueA>.+?)( and (?:the )?(?:(?<actionB>color|brightness) )?to (?<valueB>.+))?$/i]: (match) => (
     [match.groups.nickname1, match.groups.nickname2]
@@ -35,7 +35,7 @@ const triggerRegexesCallbacks = {
             action: action ?? 'brightness',
             value: action === 'color' ? value : Number.parseInt(value, 10),
           };
-        }),
+        }).filter((action) => !Number.isNaN(action.value)),
       }))),
   [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<action>(?:color )?temp(?:erature)?|brightness) )?(?<value>up|down)$/i]: (match) => (
     [match.groups.nickname1, match.groups.nickname2]
