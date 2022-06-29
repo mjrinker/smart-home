@@ -26,6 +26,7 @@
     "mariadb": "^2.5.2",
     "meross-cloud": "1.5.0",
     "moment-timezone": "^0.5.32",
+    "mqtt": "^4.3.7",
     "mysql2": "^2.1.0",
     "node-fetch": "^2.6.1",
     "paho-mqtt": "^1.1.0",
