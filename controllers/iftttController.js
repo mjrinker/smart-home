@@ -48,7 +48,7 @@ const triggerRegexesCallbacks = {
         }],
       }))),
   [/^Turn (?:(?<actionA>on|off) )?all(?: (?:the )?lights)?(?: (?<actionB>on|off))?$/i]: (match) => [{
-    nickname: '*',
+    nickname: '*bulb',
     actions: [{
       action: match.groups.actionB ?? match.groups.actionA ?? 'off',
       value: true,
@@ -57,7 +57,7 @@ const triggerRegexesCallbacks = {
 };
 
 exports.triggerAction = fn.asyncMw(async (req, res) => {
-  const triggerPhrase = req.body.triggerPhrase?.trim();
+  const triggerPhrase = req.body.triggerPhrase?.trim().replaceAll(/ ?' ?/g, "'");
   if (!triggerPhrase) {
     return fn.sendResponse(req, res, 400, {
       success: false,
