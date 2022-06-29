@@ -1,39 +1,10 @@
-const deviceHelper = require('../helpers/deviceHelper');
+const sceneHelper = require('../helpers/sceneHelper');
 
-const {
-  fn,
-  scenes,
-} = global;
+const { fn } = global;
 
 exports.playScene = fn.asyncMw(async (req, res) => {
   const sceneName = fn.slugify(req.params.sceneName);
-  const scene = scenes[sceneName];
-  if (!scene) {
-    return fn.sendResponse(req, res, 404, {
-      success: false,
-      status: 404,
-      error: 'SCENE_NOT_FOUND',
-      message: `Cannot find scene ${sceneName}`,
-    });
-  }
-
-  const deviceActions = scene.sceneActions.map((sceneAction) => {
-    const sceneActionModel = sceneAction[sceneAction.model];
-    if (!sceneActionModel) {
-      return null;
-    }
-    const modelName = sceneActionModel.name;
-    const actions = {
-      [sceneAction.action]: fn.castActionValue(sceneAction.value, sceneAction.datatype),
-    };
-
-    return {
-      nickname: modelName,
-      actions,
-    };
-  }).filter((deviceAction) => deviceAction);
-
-  const response = await deviceHelper.performDeviceActions(deviceActions);
+  const response = await sceneHelper.runScene(sceneName);
   if (response && response.status) {
     return fn.sendResponse(req, res, response.status, response);
   }

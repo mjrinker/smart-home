@@ -1,59 +1,80 @@
 const deviceHelper = require('../helpers/deviceHelper');
+const sceneHelper = require('../helpers/sceneHelper');
 
 const { fn } = global;
 
 // TODO change this to pull from the db
 const triggerRegexesCallbacks = {
-  [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<actionA>(?:color )?temp(?:erature)?|brightness) )?to (?<valueA>\d+) ?(?:%|percent)( and (?:the )?(?:(?<actionB>(?:color )?temp(?:erature)?|brightness) )?to (?<valueB>\d+) ?(?:%|percent))?$/i]: (match) => (
-    [match.groups.nickname1, match.groups.nickname2]
-      .filter((nickname) => !!nickname)
-      .map((nickname) => ({
-        nickname,
-        actions: [match.groups.actionA, match.groups.actionB].map((action, index) => ({
-          action: action?.match(/(?:color )?temp(?:erature)?/i) ? 'temperature' : 'brightness',
-          value: Number.parseInt(index === 0 ? match.groups.valueA : match.groups.valueB, 10),
-        })).filter((action) => !Number.isNaN(action.value)),
-      }))),
-  [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<actionA>color|brightness) )?to (?<valueA>.+?)( and (?:the )?(?:(?<actionB>color|brightness) )?to (?<valueB>.+))?$/i]: (match) => (
-    [match.groups.nickname1, match.groups.nickname2]
-      .filter((nickname) => !!nickname)
-      .map((nickname) => ({
-        nickname,
-        actions: [match.groups.actionA, match.groups.actionB].map((action, index) => {
-          const value = index === 0 ? match.groups.valueA : match.groups.valueB;
-          return {
-            action: action ?? 'brightness',
-            value: action === 'color' ? value : Number.parseInt(value, 10),
-          };
-        }).filter((action) => !Number.isNaN(action.value)),
-      }))),
-  [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<action>(?:color )?temp(?:erature)?|brightness) )?(?<value>up|down)$/i]: (match) => (
-    [match.groups.nickname1, match.groups.nickname2]
-      .filter((nickname) => !!nickname)
-      .map((nickname) => ({
-        nickname,
-        actions: [{
-          action: match.groups.action?.match(/(?:color )?temp(?:erature)?/i) ? 'temperature' : 'brightness',
-          value: match.groups.value === 'up' ? '+25' : '-25',
-        }],
-      }))),
-  [/^Turn (?:(?<actionA>on|off) )?all(?: (?:the )?lights)?(?: (?<actionB>on|off))?$/i]: (match) => [{
-    nickname: '*bulb',
-    actions: [{
-      action: match.groups.actionB ?? match.groups.actionA ?? 'off',
-      value: true,
+  [/^Turn play (?:the )?(?<sceneName>.*) scene$/i]: {
+    callback: (match) => match.groups.sceneName,
+    performAction: sceneHelper.runScene,
+  },
+  [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<actionA>(?:color )?temp(?:erature)?|brightness) )?to (?<valueA>\d+) ?(?:%|percent)( and (?:the )?(?:(?<actionB>(?:color )?temp(?:erature)?|brightness) )?to (?<valueB>\d+) ?(?:%|percent))?$/i]: {
+    callback: (match) => (
+      [match.groups.nickname1, match.groups.nickname2]
+        .filter((nickname) => !!nickname)
+        .map((nickname) => ({
+          nickname,
+          actions: [match.groups.actionA, match.groups.actionB].map((action, index) => ({
+            action: action?.match(/(?:color )?temp(?:erature)?/i) ? 'temperature' : 'brightness',
+            value: Number.parseInt(index === 0 ? match.groups.valueA : match.groups.valueB, 10),
+          }))
+            .filter((action) => !Number.isNaN(action.value)),
+        }))),
+    performAction: deviceHelper.performDeviceActions,
+  },
+  [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<actionA>color|brightness) )?to (?<valueA>.+?)( and (?:the )?(?:(?<actionB>color|brightness) )?to (?<valueB>.+))?$/i]: {
+    callback: (match) => (
+      [match.groups.nickname1, match.groups.nickname2]
+        .filter((nickname) => !!nickname)
+        .map((nickname) => ({
+          nickname,
+          actions: [match.groups.actionA, match.groups.actionB].map((action, index) => {
+            const value = index === 0 ? match.groups.valueA : match.groups.valueB;
+            return {
+              action: action ?? 'brightness',
+              value: action === 'color' ? value : Number.parseInt(value, 10),
+            };
+          }).filter((action) => !Number.isNaN(action.value)),
+        }))),
+    performAction: deviceHelper.performDeviceActions,
+  },
+  [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<action>(?:color )?temp(?:erature)?|brightness) )?(?<value>up|down)$/i]: {
+    callback: (match) => (
+      [match.groups.nickname1, match.groups.nickname2]
+        .filter((nickname) => !!nickname)
+        .map((nickname) => ({
+          nickname,
+          actions: [{
+            action: match.groups.action?.match(/(?:color )?temp(?:erature)?/i) ? 'temperature' : 'brightness',
+            value: match.groups.value === 'up' ? '+25' : '-25',
+          }],
+        }))),
+    performAction: deviceHelper.performDeviceActions,
+  },
+  [/^Turn (?:(?<actionA>on|off) )?all(?: (?:the )?lights)?(?: (?<actionB>on|off))?$/i]: {
+    callback: (match) => [{
+      nickname: '*bulb',
+      actions: [{
+        action: match.groups.actionB ?? match.groups.actionA ?? 'off',
+        value: true,
+      }],
     }],
-  }],
-  [/^Turn (?:(?<actionA>on|off) )?(?:the )?(?<nickname1>.*?) ?(?:lights?)?(?: and (?:the )?(?<nickname2>.*?) ?(?:lights?)?)?(?: (?<actionB>on|off))?$/i]: (match) => (
-    [match.groups.nickname1, match.groups.nickname2]
-      .filter((nickname) => !!nickname)
-      .map((nickname) => ({
-        nickname,
-        actions: [{
-          action: match.groups.actionB ?? match.groups.actionA ?? 'on',
-          value: true,
-        }],
-      }))),
+    performAction: deviceHelper.performDeviceActions,
+  },
+  [/^Turn (?:(?<actionA>on|off) )?(?:the )?(?<nickname1>.*?) ?(?:lights?)?(?: and (?:the )?(?<nickname2>.*?) ?(?:lights?)?)?(?: (?<actionB>on|off))?$/i]: {
+    callback: (match) => (
+      [match.groups.nickname1, match.groups.nickname2]
+        .filter((nickname) => !!nickname)
+        .map((nickname) => ({
+          nickname,
+          actions: [{
+            action: match.groups.actionB ?? match.groups.actionA ?? 'on',
+            value: true,
+          }],
+        }))),
+    performAction: deviceHelper.performDeviceActions,
+  },
 };
 
 exports.triggerAction = fn.asyncMw(async (req, res) => {
@@ -90,7 +111,7 @@ exports.triggerAction = fn.asyncMw(async (req, res) => {
     });
   }
 
-  const deviceActions = triggerRegexesCallbacks[regex]?.(match);
-  const response = await deviceHelper.performDeviceActions(deviceActions);
+  const { callback, performAction } = triggerRegexesCallbacks[regex];
+  const response = await performAction(callback?.(match));
   return fn.sendResponse(req, res, response?.status || 200, response);
 });
