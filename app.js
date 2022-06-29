@@ -47,7 +47,7 @@ const Climate = require('./devices/tuya/climate');
 const Fan = require('./devices/tuya/fan');
 const Light = require('./devices/tuya/light');
 
-const MerossCloudDevice = require('./lib/meross-local/MerossCloudDevice');
+const MerossLocalDevice = require('./lib/meross-local/MerossLocalDevice');
 const MerossDevice = require('./devices/meross/device');
 const Bulb = require('./devices/meross/bulb');
 const Thermostat = require('./devices/meross/thermostat');
@@ -425,39 +425,43 @@ try {
       }
     });
 
-    const deviceDefOffice3 = {
-      uuid: '1909205060573590802548e1e9527aaf',
-      onlineStatus: 1,
-      devName: 'Office 3',
-      devIconId: 'bulbIcon',
-      bindTime: 12,
-      deviceType: 'msl120',
-      subType: 'msl120b',
-      channels: [0],
-      region: 'us',
-      fmwareVersion: '2.1.16',
-      hdwareVersion: '2.0.0',
-      userDevIcon: 'devIcon',
-      iconType: 1,
-      skillNumber: '2',
-      domain: '192.168.0.107',
-      reservedDomain: '192.168.0.107',
-    };
-    const deviceOffice3 = new MerossCloudDevice('token', '', '0', deviceDefOffice3);
-    deviceOffice3.connect();
-    global.Devices['1909205060573590802548e1e9527aaf'] = {
-      device: deviceOffice3,
-      deviceDef: deviceDefOffice3,
-      Device: new Bulb({
-        deviceId: '1909205060573590802548e1e9527aaf',
-        device: deviceOffice3,
-        deviceDef: deviceDefOffice3,
-        presets: Object.entries(global.deviceConfigByMfgId['1909205060573590802548e1e9527aaf']?.presets || {})
-          .map(([name, actions]) => ({ name, actions })) || [],
-      }),
-    };
-
-    logger.info(deviceDefOffice3.devName, '.'.repeat(Math.abs(30 - deviceDefOffice3.devName.length)), brightGreen('connected'));
+    Object.values(global.deviceConfig).forEach((devConfig) => {
+      if (!_.isPlainObject(devConfig) || !devConfig.mfg_id) {
+        return;
+      }
+      const deviceDef = {
+        uuid: devConfig.mfg_id,
+        onlineStatus: 1,
+        devName: devConfig.label,
+        devIconId: devConfig.icon ?? 'bulbIcon',
+        bindTime: 12,
+        deviceType: devConfig.model ?? 'msl120',
+        subType: devConfig.subModel ?? 'msl120b',
+        channels: [0],
+        region: process.env.REGION,
+        fmwareVersion: '2.1.16',
+        hdwareVersion: '2.0.0',
+        userDevIcon: devConfig.icon ?? 'devIcon',
+        iconType: 1,
+        skillNumber: '2',
+        domain: '192.168.0.107',
+        reservedDomain: '192.168.0.107',
+      };
+      const device = new MerossLocalDevice('token', '', '0', deviceDef, logger);
+      device.connect();
+      global.Devices[deviceDef.uuid] = {
+        device,
+        deviceDef,
+        Device: new Bulb({
+          deviceId: deviceDef.uuid,
+          device,
+          deviceDef,
+          presets: Object.entries(devConfig?.presets || {})
+            .map(([name, actions]) => ({ name, actions })) || [],
+        }),
+      };
+      // logger.info(deviceDef.devName, '.'.repeat(Math.abs(30 - deviceDef.devName.length)), brightGreen('connected'));
+    });
 
     // STEP 6: Add remaining globals
 
