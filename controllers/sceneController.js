@@ -9,7 +9,7 @@ exports.playScene = fn.asyncMw(async (req, res) => {
   const sceneName = fn.slugify(req.params.sceneName);
   const scene = scenes[sceneName];
   if (!scene) {
-    fn.sendResponse(req, res, 404, {
+    return fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
       error: 'SCENE_NOT_FOUND',

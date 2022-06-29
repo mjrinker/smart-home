@@ -17,7 +17,13 @@ const MerossCloud = require('meross-cloud');
 const moment = require('moment-timezone');
 const path = require('path');
 const {
-  DataTypes, Model, Op, Sequelize,
+  ConnectionError,
+  ConnectionTimedOutError,
+  DataTypes,
+  Model,
+  Op,
+  Sequelize,
+  TimeoutError,
 } = require('sequelize');
 const uuid = require('uuid').v4;
 
@@ -41,6 +47,7 @@ const Climate = require('./devices/tuya/climate');
 const Fan = require('./devices/tuya/fan');
 const Light = require('./devices/tuya/light');
 
+const MerossCloudDevice = require('./lib/meross-local/MerossCloudDevice');
 const MerossDevice = require('./devices/meross/device');
 const Bulb = require('./devices/meross/bulb');
 const Thermostat = require('./devices/meross/thermostat');
@@ -50,6 +57,8 @@ const Thermostat = require('./devices/meross/thermostat');
 // const Humidifier = require('./devices/meross/humidifier');
 // const DoorOpener = require('./devices/meross/doorOpener');
 // const Sensor = require('./devices/meross/sensor');
+
+// require('./broker/mqttBroker');
 
 const logger = {
   ...(Logger()),
@@ -198,9 +207,9 @@ try {
         },
         retry: {
           match: [
-            Sequelize.ConnectionError,
-            Sequelize.ConnectionTimedOutError,
-            Sequelize.TimeoutError,
+            ConnectionError,
+            ConnectionTimedOutError,
+            TimeoutError,
             /Lock wait timeout exceeded/i,
           ],
           max: 3,
@@ -275,14 +284,6 @@ try {
       region: process.env.REGION,
     });
 
-    try {
-      await tuyaAPI.login();
-      logger.info('Successfully authenticated with CloudTuya');
-    } catch (error) {
-      logger.error('Cannot authenticate with CloudTuya');
-      logger.error(error);
-    }
-
     // STEP 3: Add essential globals
     const globals = {
       _,
@@ -335,6 +336,8 @@ try {
     global.deviceConfigByMfgId = _.keyBy(Object.values(global.deviceConfig)
       .filter((device) => _.isPlainObject(device) && device.mfg_id), 'mfg_id');
 
+    global.Devices = {};
+
     global.deviceTypeClassMap = {
       tuya: {
         socket: TuyaDevice,
@@ -355,57 +358,61 @@ try {
       },
     };
 
-    global.Devices = {};
-
-    tuyaAPI.find({}).then((devices) => {
-      devices.forEach((device) => {
-        const deviceId = device.id;
-        const online = device.data?.online;
-        const deviceDef = {
-          bindTime: 0,
-          channels: [],
-          devName: device.name,
-          devIconId: device.icon,
-          deviceType: device.dev_type,
-          domain: '',
-          fmwareVersion: '',
-          hdwareVersion: '',
-          iconType: 0,
-          onlineStatus: Number(!!online),
-          region: process.env.REGION || 'us',
-          reservedDomain: '',
-          skillNumber: '',
-          subType: device.ha_type,
-          userDevIcon: '',
-          uuid: deviceId,
-        };
-        if (global.deviceTypeClassMap.tuya.__ignore.includes(deviceDef.deviceType)) {
-          logger.dev.warn(`Ignoring device class for Tuya ${deviceDef.deviceType} ${deviceDef.devName}`);
-        } else {
-          const DeviceType = _.get(global.deviceTypeClassMap, ['tuya', deviceDef.deviceType], null);
-          if (DeviceType) {
-            global.Devices[deviceId] = {
-              deviceDef,
-              Device: new DeviceType({
-                api: tuyaAPI,
-                deviceId,
-                device,
-                deviceDef,
-                online,
-                state: device.data?.state,
-              }),
-            };
+    tuyaAPI.login().then(() => {
+      logger.info('Successfully authenticated with CloudTuya');
+      tuyaAPI.find({}).then((devices) => {
+        devices.forEach((device) => {
+          const deviceId = device.id;
+          const online = device.data?.online;
+          const deviceDef = {
+            bindTime: 0,
+            channels: [],
+            devName: device.name,
+            devIconId: device.icon,
+            deviceType: device.dev_type,
+            domain: '',
+            fmwareVersion: '',
+            hdwareVersion: '',
+            iconType: 0,
+            onlineStatus: Number(!!online),
+            region: process.env.REGION || 'us',
+            reservedDomain: '',
+            skillNumber: '',
+            subType: device.ha_type,
+            userDevIcon: '',
+            uuid: deviceId,
+          };
+          if (global.deviceTypeClassMap.tuya.__ignore.includes(deviceDef.deviceType)) {
+            logger.dev.warn(`Ignoring device class for Tuya ${deviceDef.deviceType} ${deviceDef.devName}`);
           } else {
-            logger.error(JSON.stringify({
-              level: 'ERROR',
-              message: 'Cannot find matching device class',
-              data: {
+            const DeviceType = _.get(global.deviceTypeClassMap, ['tuya', deviceDef.deviceType], null);
+            if (DeviceType) {
+              global.Devices[deviceId] = {
                 deviceDef,
-              },
-            }));
+                Device: new DeviceType({
+                  api: tuyaAPI,
+                  deviceId,
+                  device,
+                  deviceDef,
+                  online,
+                  state: device.data?.state,
+                }),
+              };
+            } else {
+              logger.error(JSON.stringify({
+                level: 'ERROR',
+                message: 'Cannot find matching device class',
+                data: {
+                  deviceDef,
+                },
+              }));
+            }
           }
-        }
+        });
       });
+    }).catch((error) => {
+      logger.error('Cannot authenticate with CloudTuya');
+      logger.error(error);
     });
 
     // STEP 5: Initialize device listeners
@@ -417,6 +424,40 @@ try {
         logger.info('Successfully authenticated with Meross');
       }
     });
+
+    const deviceDefOffice3 = {
+      uuid: '1909205060573590802548e1e9527aaf',
+      onlineStatus: 1,
+      devName: 'Office 3',
+      devIconId: 'bulbIcon',
+      bindTime: 12,
+      deviceType: 'msl120',
+      subType: 'msl120b',
+      channels: [0],
+      region: 'us',
+      fmwareVersion: '2.1.16',
+      hdwareVersion: '2.0.0',
+      userDevIcon: 'devIcon',
+      iconType: 1,
+      skillNumber: '2',
+      domain: '192.168.0.107',
+      reservedDomain: '192.168.0.107',
+    };
+    const deviceOffice3 = new MerossCloudDevice('token', '', '0', deviceDefOffice3);
+    deviceOffice3.connect();
+    global.Devices['1909205060573590802548e1e9527aaf'] = {
+      device: deviceOffice3,
+      deviceDef: deviceDefOffice3,
+      Device: new Bulb({
+        deviceId: '1909205060573590802548e1e9527aaf',
+        device: deviceOffice3,
+        deviceDef: deviceDefOffice3,
+        presets: Object.entries(global.deviceConfigByMfgId['1909205060573590802548e1e9527aaf']?.presets || {})
+          .map(([name, actions]) => ({ name, actions })) || [],
+      }),
+    };
+
+    logger.info(deviceDefOffice3.devName, '.'.repeat(Math.abs(30 - deviceDefOffice3.devName.length)), brightGreen('connected'));
 
     // STEP 6: Add remaining globals
 

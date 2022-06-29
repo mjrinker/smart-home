@@ -66,7 +66,7 @@ class Bulb extends MerossDevice {
       channel: 0,
       luminance: features.brightness || this.lightValues.brightness,
       temperature: features.temperature || this.lightValues.color_temp,
-      rgb: parseInt(features.color, 16) || this.lightValues.color,
+      rgb: parseInt(features.color?.replaceAll(/[^\da-f]/gi, '') || 'ffffff', 16) || this.lightValues.color,
     };
 
     try {

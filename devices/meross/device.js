@@ -18,8 +18,8 @@ class MerossDevice {
     this.deviceDef = options.deviceDef;
     this.name = this.deviceDef.devName;
 
-    this.online = false;
-    this.state = false;
+    this.online = true;
+    this.state = true;
     this.override = true;
     this.lock = false;
 

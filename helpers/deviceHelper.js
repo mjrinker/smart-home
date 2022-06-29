@@ -282,7 +282,13 @@ exports.performDeviceAction = async (deviceData) => {
 
         case 'light': {
           if (Device instanceof Bulb) {
-            Device.setLightValues(value).then((response) => actionCallback(response, action));
+            const lightValues = {
+              ...value,
+              color: value?.color
+                ? colors[fn.slugify(value.color)]?.value || value.color
+                : undefined,
+            };
+            Device.setLightValues(lightValues).then((response) => actionCallback(response, action));
           } else {
             errors.push({
               success: false,
@@ -314,7 +320,8 @@ exports.performDeviceAction = async (deviceData) => {
 
         case 'color': {
           if (Device instanceof Bulb) {
-            Device.setColor(_.get(colors, [fn.slugify(value), 'value']) || value).then((response) => actionCallback(response, action));
+            Device.setColor(colors[fn.slugify(value)]?.value || value)
+              .then((response) => actionCallback(response, action));
           } else {
             errors.push({
               success: false,
@@ -506,8 +513,19 @@ exports.performDeviceActions = async (deviceActions) => {
 
       await Promise.all(deviceIdsInfo.map((deviceIdInfo) => (async (deviceIdInfo) => {
         const deviceId = deviceIdInfo.mfg_id;
-        const { Device } = Devices[deviceId];
-        const { deviceDef } = Devices[deviceId];
+        const deviceInfo = Devices[deviceId];
+        if (!deviceInfo) {
+          errors.push({
+            success: false,
+            status: 404,
+            error: 'DEVICE_NOT_FOUND',
+            message: `Cannot find device ${deviceIdInfo.nickname}`,
+          });
+
+          deviceCounter += 1;
+          return;
+        }
+        const { Device, deviceDef } = deviceInfo;
         if (!Device) {
           errors.push({
             success: false,
