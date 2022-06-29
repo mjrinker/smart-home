@@ -4,7 +4,7 @@ const { fn } = global;
 
 // TODO change this to pull from the db
 const triggerRegexesCallbacks = {
-  [/^Turn (?<actionA>(?:on|off) )?(?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?<actionB>on|off)?$/i]: (match) => (
+  [/^Turn (?:(?<actionA>on|off) )?(?:the )?(?<nickname1>.*?) ?(?:lights?)?(?: and (?:the )?(?<nickname2>.*?) ?(?:lights?)?)?(?: (?<actionB>on|off))?$/i]: (match) => (
     [match.groups.nickname1, match.groups.nickname2]
       .filter((nickname) => !!nickname)
       .map((nickname) => ({
@@ -47,7 +47,7 @@ const triggerRegexesCallbacks = {
           value: match.groups.value === 'up' ? '+25' : '-25',
         }],
       }))),
-  [/^Turn (?<actionA>(?:on|off) )?all (?:(?:the )?lights )?(?<actionB>on|off)$/i]: (match) => [{
+  [/^Turn (?:(?<actionA>on|off) )?all(?: (?:the )?lights)?(?: (?<actionB>on|off))?$/i]: (match) => [{
     nickname: '*',
     actions: [{
       action: match.groups.actionB ?? match.groups.actionA ?? 'off',
