@@ -4,7 +4,7 @@ const { fn } = global;
 
 // TODO change this to pull from the db
 const triggerRegexesCallbacks = {
-  [/^Turn (?<actionA>(?:on|off) )?(?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?<actionB>on|off)?$/i]: (match) => (
+  [/^Turn (?:(?<actionA>on|off) )?(?:the )?(?<nickname1>.*?) ?(?:lights?)?(?: and (?:the )?(?<nickname2>.*?) ?(?:lights?)?)?(?: (?<actionB>on|off))?$/i]: (match) => (
     [match.groups.nickname1, match.groups.nickname2]
       .filter((nickname) => !!nickname)
       .map((nickname) => ({
@@ -22,7 +22,7 @@ const triggerRegexesCallbacks = {
         actions: [match.groups.actionA, match.groups.actionB].map((action, index) => ({
           action: action?.match(/(?:color )?temp(?:erature)?/i) ? 'temperature' : 'brightness',
           value: Number.parseInt(index === 0 ? match.groups.valueA : match.groups.valueB, 10),
-        })),
+        })).filter((action) => !Number.isNaN(action.value)),
       }))),
   [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<actionA>color|brightness) )?to (?<valueA>.+?)( and (?:the )?(?:(?<actionB>color|brightness) )?to (?<valueB>.+))?$/i]: (match) => (
     [match.groups.nickname1, match.groups.nickname2]
@@ -35,7 +35,7 @@ const triggerRegexesCallbacks = {
             action: action ?? 'brightness',
             value: action === 'color' ? value : Number.parseInt(value, 10),
           };
-        }),
+        }).filter((action) => !Number.isNaN(action.value)),
       }))),
   [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<action>(?:color )?temp(?:erature)?|brightness) )?(?<value>up|down)$/i]: (match) => (
     [match.groups.nickname1, match.groups.nickname2]
@@ -47,8 +47,8 @@ const triggerRegexesCallbacks = {
           value: match.groups.value === 'up' ? '+25' : '-25',
         }],
       }))),
-  [/^Turn (?<actionA>(?:on|off) )?all (?:(?:the )?lights )?(?<actionB>on|off)$/i]: (match) => [{
-    nickname: '*',
+  [/^Turn (?:(?<actionA>on|off) )?all(?: (?:the )?lights)?(?: (?<actionB>on|off))?$/i]: (match) => [{
+    nickname: '*bulb',
     actions: [{
       action: match.groups.actionB ?? match.groups.actionA ?? 'off',
       value: true,
@@ -57,7 +57,7 @@ const triggerRegexesCallbacks = {
 };
 
 exports.triggerAction = fn.asyncMw(async (req, res) => {
-  const triggerPhrase = req.body.triggerPhrase?.trim();
+  const triggerPhrase = req.body.triggerPhrase?.trim().replaceAll(/ ?' ?/g, "'");
   if (!triggerPhrase) {
     return fn.sendResponse(req, res, 400, {
       success: false,
