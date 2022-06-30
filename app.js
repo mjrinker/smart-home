@@ -469,6 +469,7 @@ try {
             .map(([name, actions]) => ({ name, actions })) || [],
         }),
       };
+      global.Devices[deviceDef.uuid].Device.isOn();
     });
 
     // add remaining globals
