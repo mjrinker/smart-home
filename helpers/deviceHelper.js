@@ -221,12 +221,14 @@ exports.performDeviceAction = async (deviceData) => {
     const actionCallback = (response, action) => {
       const responseSuccess = response?.header?.code;
       if (responseSuccess === undefined) {
-        if (_.isPlainObject(response)) {
-          (response.success ? successes : errors).push(response);
+        if (_.isPlainObject(response) && response?.success) {
+          Device.state = action === 'toggle' ? !Device.state : action !== 'off';
+          successes.push(response);
         } else {
           errors.push(response);
         }
       } else if (responseSuccess) {
+        Device.state = action === 'toggle' ? !Device.state : action !== 'off';
         successes.push({
           success: true,
           device: {

@@ -51,8 +51,8 @@ const MerossLocalDevice = require('./lib/meross-local/MerossLocalDevice');
 const MerossDevice = require('./devices/meross/device');
 const Bulb = require('./devices/meross/bulb');
 const Thermostat = require('./devices/meross/thermostat');
+const Plug = require('./devices/meross/plug');
 // TODO add more device classes:
-// const Plug = require('./devices/meross/plug');
 // const Hub = require('./devices/meross/hub');
 // const Humidifier = require('./devices/meross/humidifier');
 // const DoorOpener = require('./devices/meross/doorOpener');
@@ -355,12 +355,23 @@ try {
       },
       meross: {
         bulb: Bulb,
+        msl100: Bulb,
         msl120: Bulb,
         msl120a: Bulb,
         msl120b: Bulb,
         msl120c: Bulb,
         msl120d: Bulb,
         thermostat: Thermostat,
+        mts100: Thermostat,
+        mts150: Thermostat,
+        mts200: Thermostat,
+        plug: Plug,
+        mss110: Plug,
+        mss210: Plug,
+        mss310: Plug,
+        mss120: Plug,
+        mss620: Plug,
+        mss630: Plug,
       },
     };
 
