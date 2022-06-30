@@ -469,13 +469,6 @@ try {
             .map(([name, actions]) => ({ name, actions })) || [],
         }),
       };
-
-      device.getOnlineStatus((error, response) => {
-        Date.now(); // needs just a tiny delay which this call provides
-        if (global.Devices[deviceDef.uuid]) {
-          global.Devices[deviceDef.uuid].Device.online = !!response?.online?.status;
-        }
-      });
     });
 
     // add remaining globals
