@@ -41,7 +41,7 @@ module.exports = () => {
       fn.filterMap(aliasObjects,
         (aliasObject) => (
           aliasObject.model !== 'room'
-          && _.get(modelsBy, [fn.pascalCase(aliasObject.model), 'id', aliasObject.model_id, 'length']) > 0
+          && modelsBy?.[fn.pascalCase(aliasObject.model)]?.id?.[aliasObject.model_id]?.length > 0
         ),
         (aliasObject) => (
           modelsBy[fn.pascalCase(aliasObject.model)].id[aliasObject.model_id][0].name
@@ -128,7 +128,7 @@ module.exports = () => {
                 timeBased: Object.fromEntries(
                   Object.entries(deviceConditionalActions).map(([action, conditionalActions]) => {
                     const scheduledPresets = Object.fromEntries(fn.filterMap(conditionalActions, { condition_type: 'time' }, (conditionalAction) => {
-                      const presetName = _.get(modelsBy.Preset.id, [conditionalAction.preset_id, 0, 'name']);
+                      const presetName = modelsBy.Preset.id?.[conditionalAction.preset_id]?.[0]?.name;
                       return [conditionalAction.condition || 'default', presetName];
                     }));
                     return [action, scheduledPresets];
@@ -145,13 +145,13 @@ module.exports = () => {
   returnObj.getGroupsConfig = (modelsBy) => (
     Object.entries(modelsBy.Group.name).flatMap(([groupName, groupObjects]) => (
       fn.filterMap(groupObjects,
-        (group) => _.get(modelsBy, ['GroupModel', 'group_id', group.id, 'length']) > 0,
+        (group) => modelsBy?.GroupModel?.group_id?.[group.id]?.length > 0,
         (group) => [
           groupName,
           fn.filterMap(modelsBy.GroupModel.group_id[group.id],
             (groupModel) => (
               groupModel.model !== 'room'
-              && _.get(modelsBy, [fn.pascalCase(groupModel.model), 'id', groupModel.model_id, 'length']) > 0
+              && modelsBy?.[fn.pascalCase(groupModel.model)]?.id?.[groupModel.model_id]?.length > 0
             ),
             (groupModel) => (
               modelsBy[fn.pascalCase(groupModel.model)].id[groupModel.model_id][0].name
@@ -179,7 +179,7 @@ module.exports = () => {
           ...scene,
           sceneActions: modelsBy.SceneAction.scene_id[scene.id].map((sceneAction) => ({
             ...sceneAction,
-            [sceneAction.model]: _.get(modelsBy, [fn.pascalCase(sceneAction.model), 'id', sceneAction.model_id, 0]),
+            [sceneAction.model]: modelsBy?.[fn.pascalCase(sceneAction.model)]?.id?.[sceneAction.model_id]?.[0],
           })),
         },
       ]))

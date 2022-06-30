@@ -104,15 +104,15 @@ const logout = (merossAPI) => {
 
 try {
   (async () => {
-  // STEP 1: make connections
     let hasInternetConnection = false;
-    while (!hasInternetConnection) {
+    while (!hasInternetConnection && process.env.AWAIT_INTERNET_CONNECTION?.toLowerCase() === 'true') {
       hasInternetConnection = await isReachable('google.com:443');
       if (!hasInternetConnection) {
         await logger.warn('Internet not connected, checking again in 15 seconds...');
         await delay(15000);
       }
     }
+
     const app = express();
     const port = process.env.PORT;
     const dbUpdateSuffix = process.env.DB_UPDATE_SUFFIX || uuid();
@@ -120,18 +120,22 @@ try {
     const isLiveEnv = ['live', 'prod', 'production'].includes(environment);
 
     if (isLiveEnv) {
+      // at the end of the day, commit any db updates from production to vcs
       setTimeout(() => {
-        exec('git reset && git add sql/db_updates/*.sql && git commit -m "db updates" && git push -u origin master', (error, stdout, stderr) => {
-          if (error) {
-            logger.error(`git error: ${error.message}`);
-            return;
-          }
-          if (stderr) {
-            logger.error(`git stderr: ${stderr}`);
-            return;
-          }
-          logger.error(`git stdout: ${stdout}`);
-        });
+        exec(
+          'git reset && git add sql/db_updates/*.sql && git commit -m "db updates" && git push -u origin master',
+          (error, stdout, stderr) => {
+            if (error) {
+              logger.error(`git error: ${error.message}`);
+              return;
+            }
+            if (stderr) {
+              logger.error(`git stderr: ${stderr}`);
+              return;
+            }
+            logger.error(`git stdout: ${stdout}`);
+          },
+        );
       }, (moment().endOf('day').diff(moment())));
     }
 
@@ -141,6 +145,7 @@ try {
       timezone: process.env.TZ,
     };
 
+    // connect to database
     const sequelize = new Sequelize(
       process.env.DB_NAME,
       process.env.DB_USERNAME,
@@ -219,9 +224,8 @@ try {
 
     await sequelize.authenticate();
 
-    // STEP 2: Apply DB Updates
+    // apply db Updates
     global.DBUpdate = sequelize.define('db_update', {
-    // Model attributes are defined here
       name: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -270,12 +274,14 @@ try {
 
     global.dbUpdateLock = false;
 
+    // initialize meross connection
     global.merossAPI = new MerossCloud({
       email: process.env.MEROSS_USERNAME,
       password: process.env.MEROSS_PASSWORD,
       logger: () => {},
     });
 
+    // initialize tuya connection
     const tuyaAPI = new CloudTuya({
       userName: process.env.TUYA_USERNAME,
       password: process.env.TUYA_PASSWORD,
@@ -284,7 +290,7 @@ try {
       region: process.env.REGION,
     });
 
-    // STEP 3: Add essential globals
+    // add essential globals
     const globals = {
       _,
       app,
@@ -326,7 +332,7 @@ try {
     const dataFn = getDataFunctions();
     global.dataFn = dataFn;
 
-    // STEP 4: Load and format data
+    // load and format data
     global.models = dataFn.loadModels();
     global.modelsBy = await dataFn.getModelsBy(global.models);
     global.scenes = dataFn.getScenesConfig(global.modelsBy);
@@ -358,6 +364,7 @@ try {
       },
     };
 
+    // connect to tuya and discover devices
     tuyaAPI.login().then(() => {
       logger.info('Successfully authenticated with CloudTuya');
       tuyaAPI.find({}).then((devices) => {
@@ -385,7 +392,7 @@ try {
           if (global.deviceTypeClassMap.tuya.__ignore.includes(deviceDef.deviceType)) {
             logger.dev.warn(`Ignoring device class for Tuya ${deviceDef.deviceType} ${deviceDef.devName}`);
           } else {
-            const DeviceType = _.get(global.deviceTypeClassMap, ['tuya', deviceDef.deviceType], null);
+            const DeviceType = global.deviceTypeClassMap?.tuya?.[deviceDef.deviceType];
             if (DeviceType) {
               global.Devices[deviceId] = {
                 deviceDef,
@@ -415,7 +422,7 @@ try {
       logger.error(error);
     });
 
-    // STEP 5: Initialize device listeners
+    // connect to meross and discover devices
     merossHelper.listeners();
     global.merossAPI.connect((error) => {
       if (error) {
@@ -425,28 +432,30 @@ try {
       }
     });
 
+    // connect to local meross devices
     Object.values(global.deviceConfig).forEach((devConfig) => {
-      if (!_.isPlainObject(devConfig) || !devConfig.mfg_id) {
+      if (!_.isPlainObject(devConfig) || !devConfig.mfg_id || devConfig.platform !== 'meross_local') {
         return;
       }
       const deviceDef = {
         uuid: devConfig.mfg_id,
         onlineStatus: 1,
         devName: devConfig.label,
-        devIconId: devConfig.icon ?? 'bulbIcon',
+        devIconId: devConfig.type,
         bindTime: 12,
-        deviceType: devConfig.model ?? 'msl120',
-        subType: devConfig.subModel ?? 'msl120b',
+        deviceType: devConfig.mfg_model,
+        subType: devConfig.mfg_sub_model,
         channels: [0],
         region: process.env.REGION,
         fmwareVersion: '2.1.16',
         hdwareVersion: '2.0.0',
-        userDevIcon: devConfig.icon ?? 'devIcon',
+        userDevIcon: devConfig.type,
         iconType: 1,
         skillNumber: '2',
         domain: '192.168.0.107',
         reservedDomain: '192.168.0.107',
       };
+
       const device = new MerossLocalDevice('token', '', '0', deviceDef, logger);
       device.connect();
       global.Devices[deviceDef.uuid] = {
@@ -460,15 +469,20 @@ try {
             .map(([name, actions]) => ({ name, actions })) || [],
         }),
       };
-      // logger.info(deviceDef.devName, '.'.repeat(Math.abs(30 - deviceDef.devName.length)), brightGreen('connected'));
+
+      device.getOnlineStatus((error, response) => {
+        Date.now(); // needs just a tiny delay which this call provides
+        if (global.Devices[deviceDef.uuid]) {
+          global.Devices[deviceDef.uuid].Device.online = !!response?.online?.status;
+        }
+      });
     });
 
-    // STEP 6: Add remaining globals
-
+    // add remaining globals
     fn = getFunctions();
     global.fn = fn;
 
-    // STEP 7: Set routes
+    // set routes
     app.use(cookieParser());
 
     app.use(bodyParser.urlencoded({ extended: true }));

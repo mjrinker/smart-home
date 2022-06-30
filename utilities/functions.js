@@ -71,7 +71,7 @@ module.exports = () => {
   fn.filterMap = (collection, filterCallback, mapCallback) => {
     const array = [];
     collection?.forEach((element, index) => {
-      let condition = null;
+      let condition;
       if (_.isFunction(filterCallback)) {
         condition = filterCallback(element, index);
       } else if (_.isPlainObject(filterCallback)) {
@@ -106,7 +106,7 @@ module.exports = () => {
   };
 
   fn.filterObjectProperties = (obj, props) => (
-    Object.fromEntries(props.map((prop) => [prop, _.get(obj, prop)]))
+    Object.fromEntries(props.map((prop) => [prop, obj?.[prop]]))
   );
 
   fn.getMilliseconds = (timeString) => {

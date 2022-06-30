@@ -50,18 +50,18 @@ exports.listeners = () => {
 
   const deviceConnectionCallback = (event, deviceId, deviceDef, device) => () => {
     if (!global.Devices[deviceId]) {
-      const DeviceType = _.get(deviceTypeClassMap, ['meross', deviceDef.deviceType], null);
+      const DeviceType = deviceTypeClassMap?.meross?.[deviceDef.deviceType];
       if (DeviceType) {
         global.Devices[deviceId] = {
           device,
           deviceDef,
-          Device: DeviceType ? new DeviceType({
+          Device: new DeviceType({
             deviceId,
             device,
             deviceDef,
             presets: Object.entries(deviceConfigByMfgId[deviceId]?.presets || {})
               .map(([name, actions]) => ({ name, actions })) || [],
-          }) : null,
+          }),
         };
       } else {
         logger.error(JSON.stringify({
