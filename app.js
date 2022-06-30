@@ -105,7 +105,7 @@ const logout = (merossAPI) => {
 try {
   (async () => {
     let hasInternetConnection = false;
-    while (!hasInternetConnection && process.env.AWAIT_INTERNET_CONNECTION.toLowerCase() === 'true') {
+    while (!hasInternetConnection && process.env.AWAIT_INTERNET_CONNECTION?.toLowerCase() === 'true') {
       hasInternetConnection = await isReachable('google.com:443');
       if (!hasInternetConnection) {
         await logger.warn('Internet not connected, checking again in 15 seconds...');
