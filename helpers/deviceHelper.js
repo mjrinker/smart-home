@@ -219,7 +219,7 @@ exports.performDeviceAction = async (deviceData) => {
     }
 
     const actionCallback = (response, action) => {
-      const responseSuccess = _.get(response, 'header.code');
+      const responseSuccess = response?.header?.code;
       if (responseSuccess === undefined) {
         if (_.isPlainObject(response)) {
           (response.success ? successes : errors).push(response);

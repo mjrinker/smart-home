@@ -24,6 +24,14 @@ module.exports = (params) => {
       type: params.DataTypes.ENUM('bulb', 'socket', 'thermostat', 'fan', 'garage'),
       allowNull: false,
     },
+    mfg_model: {
+      type: params.DataTypes.STRING,
+      allowNull: true,
+    },
+    mfg_sub_model: {
+      type: params.DataTypes.STRING,
+      allowNull: true,
+    },
     order: {
       type: params.DataTypes.INTEGER,
       defaultValue: 2147483647,
