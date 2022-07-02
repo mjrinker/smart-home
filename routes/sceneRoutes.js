@@ -30,6 +30,24 @@ const routeList = [
       { versions, func: controller.playScene },
     ],
   },
+  {
+    path: '/sequence/start',
+    method: 'post',
+    controller: 'sceneController',
+    auth: false, // TODO set this to true
+    versions: [
+      { versions, func: controller.startSequence },
+    ],
+  },
+  {
+    path: '/sequence/cancel/:id',
+    method: 'delete',
+    controller: 'sceneController',
+    auth: false, // TODO set this to true
+    versions: [
+      { versions, func: controller.cancelSequence },
+    ],
+  },
 ];
 
 fn.setRoutes({ prefix, routeList });

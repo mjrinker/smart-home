@@ -316,6 +316,7 @@ try {
       Op,
       path,
       sequelize,
+      sequences: {},
       tab,
       Thermostat,
       tuyaAPI,
