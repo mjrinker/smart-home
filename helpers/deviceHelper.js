@@ -20,6 +20,43 @@ const {
   tuyaAPI,
 } = global;
 
+const hex2Digits = (hexd) => (hexd.length === 1 ? `0${hexd}` : hexd);
+
+const rgbToHex = (r, g, b) => {
+  const red = hex2Digits(r.toString(16));
+  const green = hex2Digits(g.toString(16));
+  const blue = hex2Digits(b.toString(16));
+  return red + green + blue;
+};
+
+const blendColors = (percent, colors) => {
+  const colorInts = colors.map((color) => Number.parseInt(color, 16));
+  const left = Math.max(Math.floor(percent * (colorInts.length - 1)), 0);
+  const right = Math.min(Math.ceil(percent * (colorInts.size - 1)), colorInts.length - 1);
+  const colorLeft = colorInts[left];
+  const colorRight = colorInts[right];
+
+  /* eslint-disable no-bitwise */
+  const leftR = ((colorLeft >> 16) & 0xff);
+  const leftG = ((colorLeft >> 8) & 0xff);
+  const leftB = (colorLeft & 0xff);
+
+  const rightR = ((colorRight >> 16) & 0xff);
+  const rightG = ((colorRight >> 8) & 0xff);
+  const rightB = (colorRight & 0xff);
+  /* eslint-enable no-bitwise */
+
+  const step = 1 / (colorInts.length - 1);
+  const percentRight = (percent - left * step) / step;
+  const percentLeft = 1 - percentRight;
+
+  const red = Math.floor((leftR * percentLeft + rightR * percentRight));
+  const green = Math.floor((leftG * percentLeft + rightG * percentRight));
+  const blue = Math.floor((leftB * percentLeft + rightB * percentRight));
+
+  return rgbToHex(red, green, blue);
+};
+
 exports.calculateNewLightValue = (lightValue, lightProperty, actions, Device) => {
   let mutableLightValue = lightValue;
   const currentLightValue = Device?.lightValues && Device.lightValues[lightProperty];
@@ -283,7 +320,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'light': {
-          if (Device instanceof Bulb) {
+          if (Device instanceof Light || Device instanceof Bulb) {
             const lightValues = {
               ...value,
               color: value?.color
@@ -306,7 +343,7 @@ exports.performDeviceAction = async (deviceData) => {
         case 'brightness':
           // falls through
         case 'luminance': {
-          if (Device instanceof Bulb) {
+          if (Device instanceof Light || Device instanceof Bulb) {
             Device.setBrightness(value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
@@ -321,7 +358,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'color': {
-          if (Device instanceof Bulb) {
+          if (Device instanceof Light || Device instanceof Bulb) {
             Device.setColor(colors[fn.slugify(value)]?.value || value)
               .then((response) => actionCallback(response, action));
           } else {
@@ -337,13 +374,144 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'temperature': {
-          if (Device instanceof Bulb) {
-            if (Device instanceof Light || Device instanceof Bulb) {
-              Device.setColorTemperature(value).then((response) => (
-                actionCallback(response, action)));
-            } else if (Device instanceof Climate || Device instanceof Thermostat) {
-              Device.setTemperature(value).then((response) => actionCallback(response, action));
-            }
+          if (Device instanceof Light || Device instanceof Bulb) {
+            Device.setColorTemperature(value).then((response) => (
+              actionCallback(response, action)));
+          } else if (Device instanceof Climate || Device instanceof Thermostat) {
+            Device.setTemperature(value).then((response) => actionCallback(response, action));
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${Device.name} does not support action ${action}`,
+            });
+          }
+
+          break;
+        }
+
+        case 'fade_off': {
+          if (Device instanceof Light || Device instanceof Bulb) {
+            (async () => {
+              const currentBrightness = await Device.getBrightness();
+              for (let i = currentBrightness - 2; i > 0; i -= 2) {
+                await Device.setBrightness(i);
+                await delay(7);
+              }
+              return Device.turnOff();
+            })().then((response) => actionCallback(response, action));
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${Device.name} does not support action ${action}`,
+            });
+          }
+
+          break;
+        }
+
+        case 'fade_on': {
+          if (Device instanceof Light || Device instanceof Bulb) {
+            (async () => {
+              const currentBrightness = await Device.getBrightness();
+              for (let i = 2; i < currentBrightness; i += 2) {
+                await Device.setBrightness(i);
+                await delay(7);
+              }
+              return Device.setBrightness(currentBrightness);
+            })().then((response) => actionCallback(response, action));
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${Device.name} does not support action ${action}`,
+            });
+          }
+
+          break;
+        }
+
+        case 'fade_brightness':
+          // falls through
+        case 'fade_luminance': {
+          if (Device instanceof Light || Device instanceof Bulb) {
+            (async () => {
+              const currentBrightness = await Device.getBrightness();
+              if (value < currentBrightness) {
+                for (let i = currentBrightness - 2; i > value; i -= 2) {
+                  await Device.setBrightness(i);
+                  await delay(7);
+                }
+              } else {
+                for (let i = currentBrightness + 2; i < value; i += 2) {
+                  await Device.setBrightness(i);
+                  await delay(7);
+                }
+              }
+              return Device.setBrightness(value);
+            })().then((response) => actionCallback(response, action));
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${Device.name} does not support action ${action}`,
+            });
+          }
+
+          break;
+        }
+
+        case 'fade_color': {
+          if (Device instanceof Light || Device instanceof Bulb) {
+            (async () => {
+              const currentColor = await Device.getColor();
+              const targetColor = colors[fn.slugify(value)]?.value || value;
+              const intermediateColors = [];
+              for (let i = 2; i < 100; i += 2) {
+                const intermediateColor = blendColors(i / 100, [currentColor, targetColor]);
+                intermediateColors.push(intermediateColor);
+              }
+              for (let i = 0; i < intermediateColors.length; i++) {
+                const intermediateColor = intermediateColors[i];
+                await Device.setColor(intermediateColor);
+                await delay(7);
+              }
+              return Device.setColor(targetColor);
+            })().then((response) => actionCallback(response, action));
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${Device.name} does not support action ${action}`,
+            });
+          }
+
+          break;
+        }
+
+        case 'fade_temperature': {
+          if (Device instanceof Light || Device instanceof Bulb) {
+            (async () => {
+              const currentTemperature = await Device.getColorTemperature();
+              if (value < currentTemperature) {
+                for (let i = currentTemperature - 2; i > value; i -= 2) {
+                  await Device.setColorTemperature(i);
+                  await delay(7);
+                }
+              } else {
+                for (let i = currentTemperature + 2; i < value; i += 2) {
+                  await Device.setColorTemperature(i);
+                  await delay(7);
+                }
+              }
+              return Device.setColorTemperature(value);
+            })().then((response) => actionCallback(response, action));
           } else {
             errors.push({
               success: false,
@@ -605,6 +773,7 @@ exports.performDeviceActions = async (deviceActions) => {
 
       if (errors.length > 0) {
         if (errors.length === 1) {
+          console.error(errors);
           return {
             code: 1,
             ...errors[0],
