@@ -10,3 +10,6 @@ exports.roomActions = [
     value: true,
   },
 ];
+
+exports.fadeDelay = 5;
+exports.fadeIncrement = 2;

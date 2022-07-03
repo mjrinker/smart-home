@@ -395,9 +395,9 @@ exports.performDeviceAction = async (deviceData) => {
           if (Device instanceof Light || Device instanceof Bulb) {
             (async () => {
               const currentBrightness = await Device.getBrightness();
-              for (let i = currentBrightness - 2; i > 0; i -= 2) {
+              for (let i = currentBrightness - constants.fadeIncrement; i > 0; i -= constants.fadeIncrement) {
                 await Device.setBrightness(i);
-                await delay(7);
+                await delay(constants.fadeDelay);
               }
               return Device.turnOff();
             })().then((response) => actionCallback(response, action));
@@ -417,9 +417,9 @@ exports.performDeviceAction = async (deviceData) => {
           if (Device instanceof Light || Device instanceof Bulb) {
             (async () => {
               const currentBrightness = await Device.getBrightness();
-              for (let i = 2; i < currentBrightness; i += 2) {
+              for (let i = constants.fadeIncrement; i < currentBrightness; i += constants.fadeIncrement) {
                 await Device.setBrightness(i);
-                await delay(7);
+                await delay(constants.fadeDelay);
               }
               return Device.setBrightness(currentBrightness);
             })().then((response) => actionCallback(response, action));
@@ -442,14 +442,14 @@ exports.performDeviceAction = async (deviceData) => {
             (async () => {
               const currentBrightness = await Device.getBrightness();
               if (value < currentBrightness) {
-                for (let i = currentBrightness - 2; i > value; i -= 2) {
+                for (let i = currentBrightness - constants.fadeIncrement; i > value; i -= constants.fadeIncrement) {
                   await Device.setBrightness(i);
-                  await delay(7);
+                  await delay(constants.fadeDelay);
                 }
               } else {
-                for (let i = currentBrightness + 2; i < value; i += 2) {
+                for (let i = currentBrightness + constants.fadeIncrement; i < value; i += constants.fadeIncrement) {
                   await Device.setBrightness(i);
-                  await delay(7);
+                  await delay(constants.fadeDelay);
                 }
               }
               return Device.setBrightness(value);
@@ -472,14 +472,14 @@ exports.performDeviceAction = async (deviceData) => {
               const currentColor = await Device.getColor();
               const targetColor = colors[fn.slugify(value)]?.value || value;
               const intermediateColors = [];
-              for (let i = 2; i < 100; i += 2) {
+              for (let i = constants.fadeIncrement; i < 100; i += constants.fadeIncrement) {
                 const intermediateColor = blendColors(i / 100, [currentColor, targetColor]);
                 intermediateColors.push(intermediateColor);
               }
               for (let i = 0; i < intermediateColors.length; i++) {
                 const intermediateColor = intermediateColors[i];
                 await Device.setColor(intermediateColor);
-                await delay(7);
+                await delay(constants.fadeDelay);
               }
               return Device.setColor(targetColor);
             })().then((response) => actionCallback(response, action));
@@ -500,14 +500,14 @@ exports.performDeviceAction = async (deviceData) => {
             (async () => {
               const currentTemperature = await Device.getColorTemperature();
               if (value < currentTemperature) {
-                for (let i = currentTemperature - 2; i > value; i -= 2) {
+                for (let i = currentTemperature - constants.fadeIncrement; i > value; i -= constants.fadeIncrement) {
                   await Device.setColorTemperature(i);
-                  await delay(7);
+                  await delay(constants.fadeDelay);
                 }
               } else {
-                for (let i = currentTemperature + 2; i < value; i += 2) {
+                for (let i = currentTemperature + constants.fadeIncrement; i < value; i += constants.fadeIncrement) {
                   await Device.setColorTemperature(i);
-                  await delay(7);
+                  await delay(constants.fadeDelay);
                 }
               }
               return Device.setColorTemperature(value);

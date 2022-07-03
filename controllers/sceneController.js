@@ -228,7 +228,7 @@ exports.cancelSequence = fn.asyncMw(async (req, res) => {
         success: false,
         status: 404,
         error: 'NOT_FOUND',
-        message: `Sequence ${id} is required`,
+        message: `Sequence ${id} does not exist`,
       });
     }
 
