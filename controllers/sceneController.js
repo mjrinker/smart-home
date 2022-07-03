@@ -19,113 +19,113 @@ exports.playScene = fn.asyncMw(async (req, res) => {
   return fn.sendResponse(req, res, 200, response);
 });
 
-exports.startSequence = fn.asyncMw(async (req, res) => {
-  let {
-    delaySeconds, // optional, must be a number
-    endAfterSeconds, // optional, must be a number
-    endAtDateTime, // optional, must be a datetime string
-    id, // optional, but recommended
-    intervalMilliseconds, // required, must be a number
-    loopCount, // optional, must be a number
-    // eslint-disable-next-line prefer-const
-    sequence, // required
-  } = req.body;
-
+const startSequence = async ({
+  delaySeconds,
+  endAfterSeconds,
+  endAtDateTime,
+  exitSequence,
+  id,
+  intervalMilliseconds,
+  loopCount,
+  sequence,
+}) => {
   if (!sequence) {
-    return fn.sendResponse(req, res, 400, {
+    return {
       success: false,
       status: 400,
       error: 'MISSING_PARAM',
       message: '`sequence` is required',
-    });
+    };
   }
 
   if (!intervalMilliseconds) {
-    return fn.sendResponse(req, res, 400, {
+    return {
       success: false,
       status: 400,
       error: 'MISSING_PARAM',
       message: '`intervalMilliseconds` is required',
-    });
+    };
   }
 
-  intervalMilliseconds = Number.parseInt(intervalMilliseconds, 10);
-  if (Number.isNaN(intervalMilliseconds)) {
-    return fn.sendResponse(req, res, 400, {
+  const intervalMillisecondsMutable = Number.parseInt(intervalMilliseconds, 10);
+  if (Number.isNaN(intervalMillisecondsMutable)) {
+    return {
       success: false,
       status: 400,
       error: 'BAD_PARAM',
       message: '`intervalMilliseconds` must be a number',
-    });
+    };
   }
 
-  delaySeconds = delaySeconds ? Number.parseInt(delaySeconds, 10) : null;
-  if (delaySeconds && Number.isNaN(delaySeconds)) {
-    return fn.sendResponse(req, res, 400, {
+  const delaySecondsMutable = Number.parseInt(delaySeconds, 10);
+  if (delaySeconds && Number.isNaN(delaySecondsMutable)) {
+    return {
       success: false,
       status: 400,
       error: 'BAD_PARAM',
       message: '`delaySeconds` must be a number',
-    });
+    };
   }
 
-  loopCount = loopCount ? Number.parseInt(loopCount, 10) : null;
-  if (loopCount && Number.isNaN(loopCount)) {
-    return fn.sendResponse(req, res, 400, {
+  const loopCountMutable = Number.parseInt(loopCount, 10);
+  if (loopCount && Number.isNaN(loopCountMutable)) {
+    return {
       success: false,
       status: 400,
       error: 'BAD_PARAM',
       message: '`loopCount` must be a number',
-    });
+    };
   }
 
-  endAfterSeconds = endAfterSeconds ? Number.parseInt(endAfterSeconds, 10) : null;
-  if (endAfterSeconds && Number.isNaN(endAfterSeconds)) {
-    return fn.sendResponse(req, res, 400, {
+  const endAfterSecondsMutable = Number.parseInt(endAfterSeconds, 10);
+  if (endAfterSeconds && Number.isNaN(endAfterSecondsMutable)) {
+    return {
       success: false,
       status: 400,
       error: 'BAD_PARAM',
       message: '`endAfterSeconds` must be a number',
-    });
+    };
   }
 
-  endAtDateTime = endAtDateTime ? moment(Date.parse(endAtDateTime)) : null;
-  if (endAtDateTime && Number.isNaN(endAtDateTime)) {
-    return fn.sendResponse(req, res, 400, {
+  const endAtDateTimeMutable = moment(Date.parse(endAtDateTime));
+  if (endAtDateTime && Number.isNaN(endAtDateTimeMutable)) {
+    return {
       success: false,
       status: 400,
       error: 'BAD_PARAM',
       message: '`endAtDateTime` must be a valid datetime',
-    });
+    };
   }
 
-  while (id == null) {
-    id = Math.floor(Math.random() * 999999);
-    if (sequences[id]) {
-      id = null;
+  let idMutable = id;
+  while (idMutable == null) {
+    idMutable = Math.floor(Math.random() * 999999);
+    if (sequences[idMutable]) {
+      idMutable = null;
     }
   }
 
-  if (sequences[id]) {
+  if (sequences[idMutable]) {
     const oldSequence = {
-      ...sequences[id],
+      ...sequences[idMutable],
     };
-    delete sequences[id];
+    delete sequences[idMutable];
     await delay(oldSequence.intervalMilliseconds);
   }
 
-  sequences[id] = {
-    delaySeconds,
-    endAfterSeconds,
-    endAtDateTime,
-    id,
-    intervalMilliseconds,
-    loopCount,
+  sequences[idMutable] = {
+    delaySeconds: delaySecondsMutable,
+    endAfterSeconds: endAfterSecondsMutable,
+    endAtDateTime: endAtDateTimeMutable,
+    exitSequence,
+    id: idMutable,
+    intervalMilliseconds: intervalMillisecondsMutable,
+    loopCount: loopCountMutable,
     sequence,
   };
 
   (async () => {
-    for (let i = 0; i < delaySeconds; i++) {
+    for (let i = 0; i < delaySecondsMutable; i++) {
       if (!sequences[id]) {
         return `Sequence ${id} was cancelled`;
       }
@@ -133,19 +133,19 @@ exports.startSequence = fn.asyncMw(async (req, res) => {
       await delay(1000);
     }
 
-    const endTime = endAfterSeconds == null ? null : moment().add(endAfterSeconds, 'seconds');
+    const endTime = endAfterSeconds == null ? null : moment().add(endAfterSecondsMutable, 'seconds');
     let i = 0;
     while (true) { // eslint-disable-line no-constant-condition
-      if (loopCount != null && i >= loopCount) {
+      if (loopCount != null && i >= loopCountMutable) {
         break;
       }
       for (let j = 0; j < sequence.length; j++) {
-        if (!sequences[id]) {
-          return `Sequence ${id} was cancelled`;
+        if (!sequences[idMutable]) {
+          return `Sequence ${idMutable} was cancelled`;
         }
 
-        if ((endAtDateTime && moment().isAfter(endAtDateTime)) || (endTime && moment().isAfter(endTime))) {
-          return `Sequence ${id} completed`;
+        if ((endAtDateTime && moment().isAfter(endAtDateTimeMutable)) || (endTime && moment().isAfter(endTime))) {
+          return `Sequence ${idMutable} completed`;
         }
 
         const sequenceStep = sequence[j];
@@ -154,26 +154,58 @@ exports.startSequence = fn.asyncMw(async (req, res) => {
         } else if (sequenceStep?.type === 'scene') {
           await sceneHelper.runScene(sequenceStep.sceneName);
         }
-        await delay(sequenceStep?.type === 'delay' ? sequenceStep.milliseconds : intervalMilliseconds);
+        await delay(sequenceStep.delayMilliseconds ?? intervalMillisecondsMutable);
       }
       i += 1;
     }
-    return `Sequence ${id} completed`;
+    return `Sequence ${idMutable} completed`;
   })().then((completedString) => {
-    delete sequences[id];
     logger.info(completedString);
   }).catch((error) => {
-    delete sequences[id];
-    logger.error(`Sequence ${id} ended with error ${error}`);
+    logger.error(`Sequence ${idMutable} ended with error ${error}`);
+  }).finally(() => {
+    delete sequences[idMutable];
+    if (exitSequence) {
+      startSequence({
+        sequence: exitSequence,
+        intervalMilliseconds: intervalMillisecondsMutable,
+        loopCount: 1,
+        id: `${idMutable}_EXIT`,
+      });
+    }
   });
 
-  const response = {
+  return {
     success: true,
     status: 200,
     code: 0,
-    id,
+    id: idMutable,
   };
-  return fn.sendResponse(req, res, 200, response);
+};
+
+exports.startSequence = fn.asyncMw(async (req, res) => {
+  const {
+    delaySeconds, // optional, must be a number
+    endAfterSeconds, // optional, must be a number
+    endAtDateTime, // optional, must be a datetime string
+    exitSequence, // optional
+    id, // optional, but recommended
+    intervalMilliseconds, // required, must be a number
+    loopCount, // optional, must be a number
+    sequence, // required
+  } = req.body;
+
+  const response = await startSequence({
+    delaySeconds,
+    endAfterSeconds,
+    endAtDateTime,
+    exitSequence,
+    id,
+    intervalMilliseconds,
+    loopCount,
+    sequence,
+  });
+  return fn.sendResponse(req, res, response?.status || 200, response);
 });
 
 exports.cancelSequence = fn.asyncMw(async (req, res) => {
