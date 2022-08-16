@@ -464,8 +464,7 @@ try {
       }
     });
 
-    // const merossLocalDevices = await dataFn.findAll('Device', { platform: 'meross_local' });
-    const merossLocalDevices = [];
+    const merossLocalDevices = await dataFn.findAll('Device', { platform: 'meross_local' });
 
     // connect to local meross devices
     merossLocalDevices.forEach((savedDevice) => {
