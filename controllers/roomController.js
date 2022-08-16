@@ -330,7 +330,7 @@ exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => fn.sendResponse(
   success: true,
   status: 200,
   code: 0,
-  rooms: (await dataFn.findAll('Room')).map((room) => roomHelper.transformRoomV2_0_0__V2_1_1(room)),
+  rooms: (await dataFn.findAll('Room')).map((room) => roomHelper.transformRoomV2_0_0__V2_1_1({ ...room, actions: constants.roomActions })),
 }));
 
 /**
@@ -339,5 +339,5 @@ exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => fn.sendResponse(
  * @version v1.0.0
  */
 exports.getRoomsV1_0_0 = fn.asyncMw(async (req, res) => (
-  fn.sendResponse(req, res, 200, (await dataFn.findAll('Room')).map((room) => roomHelper.transformRoomV1_0_0(room)))
+  fn.sendResponse(req, res, 200, (await dataFn.findAll('Room')).map((room) => roomHelper.transformRoomV1_0_0({ ...room, actions: constants.roomActions })))
 ));
