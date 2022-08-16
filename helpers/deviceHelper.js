@@ -5,7 +5,6 @@ const {
   _,
   Bulb,
   Climate,
-  data,
   dataFn,
   delay,
   Devices,
@@ -992,13 +991,11 @@ exports.reassignDeviceRoom = async (deviceIds, roomId) => {
   await transaction.commit();
 };
 
-const USE_CACHE = false;
-
 exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
   const devicesByNickname = {};
 
   if (!deviceNames?.length && deviceTypes?.length === 1 && deviceTypes[0] === '*') {
-    devicesByNickname['*'] = [...data.Device];
+    devicesByNickname['*'] = await dataFn.findAll('Device');
   }
 
   const aliases = await dataFn.findAll('Alias', { alias: deviceNames });
@@ -1091,7 +1088,9 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
   });
 
   allGroups?.forEach((group) => {
-    const devices = groupDevicesByGroupId[group.id];
+    const devices = groupDevicesByGroupId[group.id]
+      ?.map((groupDevice) => devicesById[groupDevice.model_id])
+      ?.filter((device) => device) || [];
     let parentGroup = allGroupsById[groupGroupsByModelId[group.id]?.group_id];
     while (parentGroup) {
       devicesByNickname[parentGroup.name] = _.uniqBy([
@@ -1119,9 +1118,9 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
       ], 'mfg_id');
     }
 
-    const rooms = groupRoomsByGroupId[group.id];
-    rooms?.forEach((room) => {
-      const devices = devicesByRoomId[room.id];
+    const groupRooms = groupRoomsByGroupId[group.id];
+    groupRooms?.forEach((groupRoom) => {
+      const devices = devicesByRoomId[groupRoom.model_id];
       if (devices?.length > 0) {
         devicesByNickname[group.name] = _.uniqBy([
           ...devicesByNickname[group.name] || [],
