@@ -1035,7 +1035,7 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
     name: deviceNames,
   }]);
 
-  const devices = await dataFn.findAll('Device', {
+  const devices = await dataFn.findAll('Device', [{
     id: [
       ...groupDevices?.map((groupDevice) => groupDevice.model_id) || [],
       ...deviceAliases?.map((alias) => alias.model_id) || [],
@@ -1049,9 +1049,8 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
     name: deviceNames,
   }, {
     type: deviceTypes,
-  });
+  }]);
 
-  // eslint-disable-next-line camelcase
   const groupModelsForDevice = await dataFn.findAll('GroupModel', {
     model: 'device',
     model_id: devices.map((device) => device.id),
