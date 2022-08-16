@@ -1,12 +1,12 @@
 const deviceHelper = require('./deviceHelper');
 
 const {
+  dataFn,
   fn,
-  scenes,
 } = global;
 
 exports.runScene = async (sceneName) => {
-  const scene = scenes[sceneName];
+  const scene = await dataFn.findOne('Scene', { name: sceneName });
   if (!scene) {
     return {
       success: false,

@@ -32,6 +32,14 @@ module.exports = (params) => {
       type: params.DataTypes.STRING,
       allowNull: true,
     },
+    firmware_version: {
+      type: params.DataTypes.STRING,
+      allowNull: true,
+    },
+    hardware_version: {
+      type: params.DataTypes.STRING,
+      allowNull: true,
+    },
     order: {
       type: params.DataTypes.INTEGER,
       defaultValue: 2147483647,

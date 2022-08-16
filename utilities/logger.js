@@ -18,21 +18,31 @@ const {
 } = require('./ansicodes');
 
 const showDebugLogs = Boolean(Number(process.env.SHOW_DEBUG_LOGS)) || (process.env.SHOW_DEBUG_LOGS || '').toLowerCase() !== 'false';
+const logLiteralNewlines = Boolean(Number(process.env.LOG_LITERAL_NEWLINES)) || (process.env.LOG_LITERAL_NEWLINES || '').toLowerCase() !== 'false';
 
 const formatLoggerMessage = (msg) => {
-  if (Array.isArray(msg)) {
-    return JSON.stringify(msg).replace(/\n/g, '\\n');
-  }
-  if (_.isPlainObject(msg)) {
+  if (Array.isArray(msg) || _.isPlainObject(msg)) {
+    if (logLiteralNewlines) {
+      return JSON.stringify(msg);
+    }
     return JSON.stringify(msg).replace(/\n/g, '\\n');
   }
   if (typeof msg === 'string') {
+    if (logLiteralNewlines) {
+      return msg;
+    }
     return msg.replace(/\n/g, '\\n');
   }
   if (msg instanceof Error) {
+    if (logLiteralNewlines) {
+      return red(msg.stack);
+    }
     return red(msg.stack.replace(/\n/g, '\\n'));
   }
-  return msg;
+  if (logLiteralNewlines) {
+    return msg;
+  }
+  return msg?.replace(/\n/g, '\\n');
 };
 
 const timestamp = () => moment().tz(process.env.TZ || 'UTC').format('YYYY-MM-DD HH:mm:ss.SSS z');

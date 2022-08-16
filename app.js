@@ -153,9 +153,11 @@ try {
         host: process.env.DB_HOSTNAME,
         dialect: process.env.DB_DIALECT,
         port: process.env.DB_PORT,
-        logging: async (string) => {
+        logging: async (...msg) => {
+          const messages = msg.filter((message) => !_.isPlainObject(message));
+          await logger.debug(messages);
           if (isLiveEnv && !global.dbUpdateLock) {
-            const sqlWithParams = string.replace(/Executing \(.*?\): /g, '');
+            const sqlWithParams = msg[0].replace(/Executing \(.*?\): /g, '');
             const isSelect = sqlWithParams.match(/^\(*\s*SELECT/i);
             const tableIsDbUpdates = sqlWithParams.match(/^\(*\s*(?:UPDATE|INSERT INTO|DELETE FROM) `?db_updates`?/i);
             const isTransaction = sqlWithParams.match(/^\(*\s*(?:START TRANSACTION|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|SET autocommit = )/i);
@@ -333,15 +335,9 @@ try {
     const dataFn = getDataFunctions();
     global.dataFn = dataFn;
 
-    // load and format data
+    // load data
     global.models = dataFn.loadModels();
-    global.modelsBy = await dataFn.getModelsBy(global.models);
-    global.scenes = dataFn.getScenesConfig(global.modelsBy);
-    global.rooms = dataFn.getRoomsConfig(global.modelsBy);
-    global.colors = dataFn.getColorsConfig(global.modelsBy);
-    global.deviceConfig = await dataFn.getDeviceConfig(global.modelsBy);
-    global.deviceConfigByMfgId = _.keyBy(Object.values(global.deviceConfig)
-      .filter((device) => _.isPlainObject(device) && device.mfg_id), 'mfg_id');
+    global.data = await dataFn.getData(global.models);
 
     global.Devices = {};
 
@@ -377,29 +373,43 @@ try {
     };
 
     // connect to tuya and discover devices
+    const tuyaDevices = await dataFn.findAll('Device', { platform: 'tuya' });
     tuyaAPI.login().then(() => {
       logger.info('Successfully authenticated with CloudTuya');
       tuyaAPI.find({}).then((devices) => {
-        devices.forEach((device) => {
-          const deviceId = device.id;
-          const online = device.data?.online;
+        devices.forEach(({
+          data: {
+            online,
+            state,
+          },
+          name,
+          icon,
+          id,
+          /* eslint-disable camelcase */
+          dev_type,
+          ha_type,
+          /* eslint-enable camelcase */
+        }) => {
+          // eslint-disable-next-line camelcase
+          const savedDevice = tuyaDevices.find(({ mfg_id }) => mfg_id === id);
+          const deviceId = id;
           const deviceDef = {
-            bindTime: 0,
-            channels: [],
-            devName: device.name,
-            devIconId: device.icon,
-            deviceType: device.dev_type,
-            domain: '',
-            fmwareVersion: '',
-            hdwareVersion: '',
-            iconType: 0,
-            onlineStatus: Number(!!online),
-            region: process.env.REGION || 'us',
-            reservedDomain: '',
-            skillNumber: '',
-            subType: device.ha_type,
-            userDevIcon: '',
             uuid: deviceId,
+            onlineStatus: Number(!!online),
+            devName: name,
+            devIconId: icon,
+            userDevIcon: savedDevice?.type,
+            iconType: 1,
+            deviceType: dev_type,
+            subType: ha_type,
+            fmwareVersion: savedDevice?.firmware_version,
+            hdwareVersion: savedDevice?.hardware_version,
+            skillNumber: '1',
+            region: process.env.REGION || 'us',
+            domain: `https://px1.tuya${process.env.REGION || 'us'}.com/`,
+            reservedDomain: `https://px1.tuya${process.env.REGION || 'us'}.com/`,
+            bindTime: 12,
+            channels: [0],
           };
           if (global.deviceTypeClassMap.tuya.__ignore.includes(deviceDef.deviceType)) {
             logger.dev.warn(`Ignoring device class for Tuya ${deviceDef.deviceType} ${deviceDef.devName}`);
@@ -411,10 +421,20 @@ try {
                 Device: new DeviceType({
                   api: tuyaAPI,
                   deviceId,
-                  device,
+                  device: {
+                    data: {
+                      online,
+                      state,
+                    },
+                    name,
+                    icon,
+                    id,
+                    dev_type,
+                    ha_type,
+                  },
                   deviceDef,
                   online,
-                  state: device.data?.state,
+                  state,
                 }),
               };
             } else {
@@ -444,28 +464,27 @@ try {
       }
     });
 
+    const merossLocalDevices = await dataFn.findAll('Device', { platform: 'meross_local' });
+
     // connect to local meross devices
-    Object.values(global.deviceConfig).forEach((devConfig) => {
-      if (!_.isPlainObject(devConfig) || !devConfig.mfg_id || devConfig.platform !== 'meross_local') {
-        return;
-      }
+    merossLocalDevices.forEach((savedDevice) => {
       const deviceDef = {
-        uuid: devConfig.mfg_id,
+        uuid: savedDevice.mfg_id,
         onlineStatus: 1,
-        devName: devConfig.label,
-        devIconId: devConfig.type,
-        bindTime: 12,
-        deviceType: devConfig.mfg_model,
-        subType: devConfig.mfg_sub_model,
-        channels: [0],
-        region: process.env.REGION,
-        fmwareVersion: '2.1.16',
-        hdwareVersion: '2.0.0',
-        userDevIcon: devConfig.type,
+        devName: savedDevice.label,
+        devIconId: savedDevice.type,
+        userDevIcon: savedDevice.type,
         iconType: 1,
+        deviceType: savedDevice.mfg_model,
+        subType: savedDevice.mfg_sub_model,
+        fmwareVersion: savedDevice.firmware_version,
+        hdwareVersion: savedDevice.hardware_version,
         skillNumber: '2',
+        region: process.env.REGION,
         domain: '192.168.0.107',
         reservedDomain: '192.168.0.107',
+        bindTime: 12,
+        channels: [0],
       };
 
       const device = new MerossLocalDevice('token', '', '0', deviceDef, logger);
@@ -477,8 +496,6 @@ try {
           deviceId: deviceDef.uuid,
           device,
           deviceDef,
-          presets: Object.entries(devConfig?.presets || {})
-            .map(([name, actions]) => ({ name, actions })) || [],
         }),
       };
       global.Devices[deviceDef.uuid].Device.isOn().then((state) => {

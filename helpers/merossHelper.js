@@ -43,7 +43,6 @@ exports.listeners = () => {
     _,
     Bulb,
     delay,
-    deviceConfigByMfgId,
     deviceTypeClassMap,
     logger,
   } = global;
@@ -59,8 +58,6 @@ exports.listeners = () => {
             deviceId,
             device,
             deviceDef,
-            presets: Object.entries(deviceConfigByMfgId[deviceId]?.presets || {})
-              .map(([name, actions]) => ({ name, actions })) || [],
           }),
         };
       } else {
@@ -109,31 +106,64 @@ exports.listeners = () => {
   };
 
   const overrideSleep = 1250;
-  global.merossAPI.on('deviceInitialized', (deviceId, deviceDef, device) => {
+  global.merossAPI.on('deviceInitialized', (deviceMfgId, deviceDef, device) => {
     device.on('data', async (namespace, payload) => {
-      const name = global.modelsBy.Device?.mfg_id[deviceId][0]?.name;
+      // eslint-disable-next-line camelcase
+      const savedDevice = await global.dataFn.findOne('Device', { mfg_id: deviceMfgId });
       const actions = {};
       switch (namespace) {
         case 'Appliance.Control.ToggleX': {
           const state = !!payload?.togglex[0]?.onoff;
-          if (global.Devices[deviceId]) {
-            global.Devices[deviceId].Device.state = state;
+          if (global.Devices[deviceMfgId]) {
+            global.Devices[deviceMfgId].Device.state = state;
           }
 
-          if (!global.Devices[deviceId]?.Device?.lock) {
+          if (!global.Devices[deviceMfgId]?.Device?.lock) {
             const action = state ? 'on' : 'off';
-            logger.info('External message', name, action, payload);
+            logger.info('External message', savedDevice?.name, action, payload);
 
             actions[action] = true;
 
-            if (name) {
-              const deviceIdInfo = global.deviceConfig[name];
-              const { Device } = global.Devices[deviceId];
-              if (deviceIdInfo && Device) {
+            if (savedDevice?.name) {
+              const {
+                devicesByNickname,
+                devicesByGroupId,
+                devicesByRoomId,
+              } = await deviceHelper.getDevicesByModels([savedDevice?.name], []);
+              const devices = Object.values(devicesByNickname).flatMap((devices) => devices);
+              const deviceIds = devices.map((device) => device.id);
+              const deviceIdsByRoomId = Object.fromEntries(
+                Object.entries(devicesByRoomId)
+                  .map(([roomId, devices]) => [roomId, devices.map((device) => device.id)]),
+              );
+              const deviceIdsByGroupId = Object.fromEntries(
+                Object.entries(devicesByGroupId)
+                  .map(([groupId, devices]) => [groupId, devices.map((device) => device.id)]),
+              );
+              const roomIds = Object.keys(deviceIdsByRoomId);
+              const groupIds = Object.keys(deviceIdsByGroupId);
+              const shortPresetActionsByDeviceId = await deviceHelper.getShortPresetActionsByDeviceId({
+                deviceIds,
+                roomIds,
+                groupIds,
+                deviceIdsByRoomId,
+                deviceIdsByGroupId,
+              });
+
+              const conditionalActionsByDeviceId = await exports.getConditionalActionsByDeviceId({
+                deviceIds,
+                roomIds,
+                groupIds,
+                deviceIdsByRoomId,
+                deviceIdsByGroupId,
+              });
+
+              const { Device } = global.Devices[deviceMfgId];
+              if (savedDevice && Device) {
                 const deviceData = {
-                  nickname: name,
-                  presets: deviceIdInfo.presets,
-                  info: deviceIdInfo,
+                  nickname: savedDevice?.name,
+                  presets: shortPresetActionsByDeviceId[savedDevice?.id],
+                  info: savedDevice,
                   actions,
                   Device,
                   data: {
@@ -143,33 +173,33 @@ exports.listeners = () => {
                 };
 
                 deviceHelper.getTimeBasedActions({
-                  deviceIdInfo,
+                  conditionalActions: conditionalActionsByDeviceId[savedDevice?.id],
                   deviceData,
                   deviceAction: {
-                    nickname: name,
+                    nickname: savedDevice?.name,
                     actions,
                   },
                 }).then(async (timeBasedActions) => {
                   await delay(overrideSleep);
-                  if (global.Devices[deviceId]?.Device?.override) {
+                  if (global.Devices[deviceMfgId]?.Device?.override) {
                     const { preset } = timeBasedActions;
                     const unpackedPreset = preset ? deviceData.presets[preset] : timeBasedActions;
                     if (unpackedPreset && !_.isEqual(actions, unpackedPreset)) {
                       deviceData.actions = (
                         deviceHelper.combineLightValueActions(
                           timeBasedActions,
-                          global.Devices[deviceId].Device,
+                          global.Devices[deviceMfgId].Device,
                         )
                       );
                       deviceHelper.performDeviceAction(deviceData).then(() => {
-                        global.Devices[deviceId].Device.override = true;
+                        global.Devices[deviceMfgId].Device.override = true;
                       }).catch((error) => {
                         logger.error(error);
-                        global.Devices[deviceId].Device.override = true;
+                        global.Devices[deviceMfgId].Device.override = true;
                       });
                     }
                   } else {
-                    global.Devices[deviceId].Device.override = true;
+                    global.Devices[deviceMfgId].Device.override = true;
                   }
                 });
               }
@@ -179,20 +209,20 @@ exports.listeners = () => {
           break;
         }
         case 'Appliance.Control.Light': {
-          if (global.Devices[deviceId]) {
+          if (global.Devices[deviceMfgId]) {
             const newLightValues = payload?.light;
-            global.Devices[deviceId].Device.lightValues = {
+            global.Devices[deviceMfgId].Device.lightValues = {
               brightness: newLightValues?.luminance || -1,
               color_temp: newLightValues?.temperature || -1,
               color: (Number.isNaN(Number(newLightValues?.rgb))
                 ? 0xffffff : Number(newLightValues?.rgb)).toString(16),
             };
 
-            if (!global.Devices[deviceId]?.Device?.lock) {
-              logger.info('External message', name, 'light', payload);
-              global.Devices[deviceId].Device.override = false;
+            if (!global.Devices[deviceMfgId]?.Device?.lock) {
+              logger.info('External message', savedDevice?.name, 'light', payload);
+              global.Devices[deviceMfgId].Device.override = false;
               delay(overrideSleep).then(() => {
-                global.Devices[deviceId].Device.override = true;
+                global.Devices[deviceMfgId].Device.override = true;
               });
             }
           }
@@ -204,17 +234,17 @@ exports.listeners = () => {
           break;
         }
         default: {
-          if (!global.Devices[deviceId]?.Device?.lock) {
-            logger.info('External message', name, namespace, payload);
+          if (!global.Devices[deviceMfgId]?.Device?.lock) {
+            logger.info('External message', savedDevice?.name, namespace, payload);
           }
           break;
         }
       }
     });
 
-    device.on('connected', deviceConnectionCallback('connected', deviceId, deviceDef, device));
-    device.on('reconnect', deviceConnectionCallback('reconnect', deviceId, deviceDef, device));
-    device.on('close', deviceConnectionCallback('close', deviceId, deviceDef, device));
-    device.on('error', deviceConnectionCallback('error', deviceId, deviceDef, device));
+    device.on('connected', deviceConnectionCallback('connected', deviceMfgId, deviceDef, device));
+    device.on('reconnect', deviceConnectionCallback('reconnect', deviceMfgId, deviceDef, device));
+    device.on('close', deviceConnectionCallback('close', deviceMfgId, deviceDef, device));
+    device.on('error', deviceConnectionCallback('error', deviceMfgId, deviceDef, device));
   });
 };

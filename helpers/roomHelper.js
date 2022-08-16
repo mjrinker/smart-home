@@ -1,10 +1,9 @@
-const constants = require('./constants');
 const deviceHelper = require('./deviceHelper');
 
 const {
   _,
+  dataFn,
   fn,
-  modelsBy,
 } = global;
 
 exports.transformRoomV2_0_0__V2_1_1 = (room) => fn.filterObjectProperties(room, ['name', 'label', 'actions']);
@@ -17,59 +16,11 @@ exports.transformRoomV1_0_0 = (room) => {
 };
 
 exports.updateModelsByRoomObjects = async ({ newRoom, oldRoom }) => {
-  if (_.isPlainObject(oldRoom)) {
-    Object.entries(oldRoom).forEach(([field, value]) => {
-      const groupByField = field === 'model_id' ? (oldRoom) => `${oldRoom.model}_${oldRoom.model_id}` : field;
-      const groupByValue = typeof value === 'boolean' ? Number(value) : value;
-      const roomGroup = modelsBy.Room[groupByField][groupByValue];
-      if (Array.isArray(roomGroup)) {
-        const oldRoomIndex = _.findIndex(roomGroup, { id: oldRoom.id });
-        roomGroup.splice(oldRoomIndex, 1);
-      }
-    });
-
-    const roomIndex = _.findIndex(rooms, { id: oldRoom.id });
-    if (_.isPlainObject(newRoom)) {
-      global.rooms[roomIndex] = {
-        id: newRoom.id,
-        label: newRoom.label,
-        name: newRoom.name,
-        actions: constants.roomActions,
-        devices: modelsBy.Device.room_id[newRoom.id]?.map((device) => (
-          fn.filterObjectProperties(device, constants.deviceProps)
-        )) || [],
-      };
-    } else {
-      const oldRoomDevices = modelsBy.Device.room_id[oldRoom.id] || [];
-      const oldRoomDevicesIds = oldRoomDevices.map((device) => device.id);
-      deviceHelper.reassignDeviceRoom(oldRoomDevicesIds, null); // no await
-      global.rooms.splice(roomIndex, 1);
-    }
-  }
-
-  if (_.isPlainObject(newRoom)) {
-    Object.entries(newRoom).forEach(([field, value]) => {
-      const groupByField = field === 'model_id' ? (newRoom) => `${newRoom.model}_${newRoom.model_id}` : field;
-      const groupByValue = typeof value === 'boolean' ? Number(value) : value;
-      const roomGroup = modelsBy.Room[groupByField][groupByValue];
-      if (Array.isArray(roomGroup)) {
-        roomGroup.push(newRoom);
-      } else {
-        global.modelsBy.Room[groupByField][groupByValue] = [newRoom];
-      }
-    });
-
-    if (!_.isPlainObject(oldRoom)) {
-      global.rooms.push({
-        id: newRoom.id,
-        label: newRoom.label,
-        name: newRoom.name,
-        actions: constants.roomActions,
-        devices: modelsBy.Device.room_id[newRoom.id]?.map((device) => (
-          fn.filterObjectProperties(device, constants.deviceProps)
-        )) || [],
-      });
-    }
+  if (_.isPlainObject(oldRoom) && !_.isPlainObject(newRoom)) {
+    // eslint-disable-next-line camelcase
+    const oldRoomDevices = await dataFn.findAll('Device', { room_id: oldRoom.id });
+    const oldRoomDevicesIds = oldRoomDevices.map((device) => device.id);
+    deviceHelper.reassignDeviceRoom(oldRoomDevicesIds, null); // no await
   }
 
   return true;

@@ -4,17 +4,17 @@ const deviceHelper = require('../helpers/deviceHelper');
 const roomHelper = require('../helpers/roomHelper');
 
 const {
+  dataFn,
   fn,
-  modelsBy,
   models,
-  rooms,
   sequelize,
 } = global;
 
 exports.addAlias = fn.asyncMw(async (req, res) => {
   const { roomId } = req.params;
   const { label, preferred } = req.body;
-  if (!modelsBy.Room.id[Number(roomId)]) {
+  const room = await dataFn.findOne('Room', { id: Number(roomId) });
+  if (!room) {
     return fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
@@ -22,8 +22,6 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
       message: `Cannot find room id ${roomId}`,
     });
   }
-
-  const room = rooms.find((room) => room.id === Number(roomId));
 
   const transaction = await sequelize.transaction();
   let alias;
@@ -62,7 +60,8 @@ exports.addAlias = fn.asyncMw(async (req, res) => {
 exports.createRoom = fn.asyncMw(async (req, res) => {
   const { label, deviceIds } = req.body;
   const name = fn.slugify(label);
-  if (modelsBy.Room?.name[name]?.length) {
+  const existingRoom = await dataFn.findOne('Room', { name });
+  if (existingRoom) {
     return fn.sendResponse(req, res, 409, {
       success: false,
       status: 409,
@@ -89,8 +88,8 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
     roomCopy = {
       ...JSON.parse(JSON.stringify(room)),
       actions: constants.roomActions,
-      devices: deviceIds.map((deviceId) => {
-        const device = modelsBy.Device.id[deviceId][0];
+      devices: await fn.asyncArrayIterator(deviceIds, Array.map, async (deviceId) => {
+        const device = await dataFn.findOne('Device', { id: deviceId });
         return fn.filterObjectProperties(device, constants.deviceProps);
       }),
     };
@@ -117,8 +116,7 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
 exports.deleteRoom = fn.asyncMw(async (req, res) => {
   const { roomId } = req.params;
 
-  const roomsWithRoomId = modelsBy.Room.id[Number(roomId)];
-  const room = Number(Boolean(roomsWithRoomId?.length)) > 0 ? roomsWithRoomId[0] : null;
+  const room = await dataFn.findOne('Room', { id: Number(roomId) });
   if (!room) {
     return fn.sendResponse(req, res, 404, {
       success: false,
@@ -168,7 +166,7 @@ exports.deleteRoom = fn.asyncMw(async (req, res) => {
 
 exports.getRoom = fn.asyncMw(async (req, res) => {
   const { roomId } = req.params;
-  const room = rooms.find((room) => room.id === Number(roomId));
+  const room = await dataFn.findOne('Room', { id: Number(roomId) });
   if (!room) {
     return fn.sendResponse(req, res, 404, {
       success: false,
@@ -190,7 +188,7 @@ exports.getRooms = fn.asyncMw(async (req, res) => fn.sendResponse(req, res, 200,
   success: true,
   status: 200,
   code: 0,
-  rooms,
+  rooms: await dataFn.findAll('Room'),
 }));
 
 exports.reassignRoomDevices = fn.asyncMw(async (req, res) => {
@@ -202,7 +200,8 @@ exports.reassignRoomDevices = fn.asyncMw(async (req, res) => {
 
 exports.removeAlias = fn.asyncMw(async (req, res) => {
   const { aliasId } = req.params;
-  if (!modelsBy.Alias.id[aliasId]) {
+  const alias = await dataFn.findOne('Alias', { id: Number(aliasId) });
+  if (!alias) {
     return fn.sendResponse(req, res, 404, {
       success: false,
       status: 404,
@@ -242,8 +241,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
     deviceIds,
   } = req.body;
 
-  const roomsWithRoomId = modelsBy.Room.id[Number(roomId)];
-  const room = Number(Boolean(roomsWithRoomId?.length)) > 0 ? roomsWithRoomId[0] : null;
+  const room = await dataFn.findOne('Room', { id: Number(roomId) });
   if (!room) {
     return fn.sendResponse(req, res, 404, {
       success: false,
@@ -255,12 +253,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
 
   let order;
   if (orderBetween) {
-    const orderBetweenRooms = await models.Room.findAll({
-      where: {
-        id: orderBetween,
-      },
-      raw: true,
-    });
+    const orderBetweenRooms = await dataFn.findAll('Room', { id: orderBetween });
 
     const orderBetweenOrders = orderBetweenRooms.map((room) => room.order);
     order = Math.round(orderBetweenOrders.reduce((a, b) => (a + b)) / orderBetweenOrders.length);
@@ -337,7 +330,7 @@ exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => fn.sendResponse(
   success: true,
   status: 200,
   code: 0,
-  rooms: rooms.map((room) => roomHelper.transformRoomV2_0_0__V2_1_1(room)),
+  rooms: (await dataFn.findAll('Room')).map((room) => roomHelper.transformRoomV2_0_0__V2_1_1(room)),
 }));
 
 /**
@@ -346,5 +339,5 @@ exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => fn.sendResponse(
  * @version v1.0.0
  */
 exports.getRoomsV1_0_0 = fn.asyncMw(async (req, res) => (
-  fn.sendResponse(req, res, 200, rooms.map((room) => roomHelper.transformRoomV1_0_0(room)))
+  fn.sendResponse(req, res, 200, (await dataFn.findAll('Room')).map((room) => roomHelper.transformRoomV1_0_0(room)))
 ));

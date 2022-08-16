@@ -2,7 +2,6 @@ const deviceHelper = require('../helpers/deviceHelper');
 
 const {
   _,
-  deviceConfig,
   Devices,
   fn,
 } = global;
@@ -24,48 +23,34 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
     });
   }
 
-  const devices = deviceNames.flatMap((deviceName) => {
-    const deviceInfo = deviceConfig[fn.slugify(deviceName)] || {};
-
-    let deviceIdsInfo = [];
-    if (deviceName.match(/^\*/)) {
+  const deviceNamesOnly = _.uniq(deviceNames.filter((deviceName) => !deviceName.match(/^\*/))
+    .map((deviceName) => fn.slugify(deviceName)));
+  const deviceTypesOnly = _.uniq(deviceNames.filter((deviceName) => deviceName.match(/^\*/))
+    .map((deviceName) => {
       const deviceType = deviceName.match(/^\*(.*)/)[1].toLowerCase();
-      deviceIdsInfo = Object.values(deviceConfig).filter((device) => (
-        _.isPlainObject(device) && (!deviceType || device.type === deviceType)
-      ));
-    } else {
-      try {
-        deviceIdsInfo = deviceHelper.getDeviceIdInfo(deviceInfo, deviceName);
-        deviceIdsInfo = _.uniqBy(deviceIdsInfo, (deviceIdInfo) => `${deviceIdInfo.platform} - ${deviceIdInfo.id}`);
-      } catch (error) {
-        if (error.name === 'CIRCULAR_ALIAS') {
-          return null;
-        }
-      }
-    }
+      return deviceType || '*';
+    }));
 
-    if (!deviceIdsInfo || deviceIdsInfo.length === 0) {
+  const { devicesByNickname } = await deviceHelper.getDevicesByModels(deviceNamesOnly, deviceTypesOnly);
+  const devices = _.uniqBy(Object.values(devicesByNickname).flatMap((devices) => devices), 'mfg_id');
+
+  const deviceStates = devices.map((device) => {
+    if (!Devices[device.mfg_id]) {
       return null;
     }
-
-    return deviceIdsInfo.map((deviceIdInfo) => {
-      if (!Devices[deviceIdInfo.mfg_id]) {
-        return null;
-      }
-      const { Device } = Devices[deviceIdInfo.mfg_id];
-      return {
-        name: Device.name,
-        online: Device.online,
-        state: Device.state,
-        ...(Device.lightValues ? { light_state: Device.lightValues } : {}),
-      };
-    });
+    const { Device } = Devices[device.mfg_id];
+    return {
+      name: Device.name,
+      online: Device.online,
+      state: Device.state,
+      ...(Device.lightValues ? { light_state: Device.lightValues } : {}),
+    };
   }).filter((deviceResponse) => deviceResponse) || [];
 
   return fn.sendResponse(req, res, 200, {
     success: true,
     status: 200,
     code: 0,
-    devices: devices.filter((device) => device),
+    devices: deviceStates.filter((device) => device),
   });
 });

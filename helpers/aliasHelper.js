@@ -1,14 +1,20 @@
 const {
+  dataFn,
   fn,
   models,
-  modelsBy,
   sequelize,
 } = global;
 
 exports.addAlias = async (model, modelId, label, preferred = false, transaction = null) => {
   const slug = fn.slugify(label);
-  const aliasGroup = modelsBy.Alias?.model_id[`${model}_${modelId}`];
-  if (aliasGroup?.find((alias) => alias?.alias === slug)) {
+
+  const existingAlias = await dataFn.findOne('Alias', {
+    model,
+    model_id: modelId,
+    alias: slug,
+  });
+
+  if (existingAlias) {
     return {
       error: 'EXISTS',
     };
@@ -29,26 +35,10 @@ exports.addAlias = async (model, modelId, label, preferred = false, transaction 
     transaction: transactionToUse,
   });
 
-  Object.entries(alias.dataValues).forEach(([field, value]) => {
-    const groupByValue = field === 'model_id' ? `${model}_${modelId}` : value;
-    const aliasGroups = modelsBy.Alias[field];
-    if (aliasGroups && aliasGroups[value]) {
-      global.modelsBy.Alias[field][groupByValue].push(alias);
-    }
-  });
-
   return alias;
 };
 
 exports.removeAlias = async (aliasId, transaction = null) => {
-  Object.entries(modelsBy.Alias).forEach(([field, aliasGroups]) => {
-    Object.entries(aliasGroups).forEach(([fieldValue, aliasGroup]) => {
-      global.modelsBy.Alias[field][fieldValue] = aliasGroup.filter((alias) => (
-        alias.id !== Number(aliasId)
-      ));
-    });
-  });
-
   let transactionToUse = transaction;
   if (!transaction) {
     transactionToUse = await sequelize.transaction();
@@ -65,21 +55,10 @@ exports.removeAlias = async (aliasId, transaction = null) => {
 };
 
 exports.removeAllAliases = async (model, modelId) => {
-  const aliasIds = [];
-  Object.entries(modelsBy.Alias).forEach(([field, aliasGroup]) => {
-    global.modelsBy.Alias[field] = aliasGroup.filter((alias) => {
-      const isMatch = alias.model === model && alias.model_id === modelId;
-      if (isMatch) {
-        aliasIds.push(alias.id);
-      }
-
-      return !isMatch;
-    });
-  });
-
   const deleted = await models.Alias.destroy({
     where: {
-      id: aliasIds,
+      model,
+      model_id: modelId,
     },
   });
 

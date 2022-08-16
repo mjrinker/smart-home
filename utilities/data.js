@@ -9,9 +9,61 @@ module.exports = () => {
     fn,
     fs,
     Model,
+    Op,
     path,
     sequelize,
   } = global;
+
+  const processFilter = (filter, obj) => {
+    if (Array.isArray(filter)) {
+      if (filter.length === 0) {
+        return true;
+      }
+      return filter.some((subFilter) => {
+        if (Array.isArray(subFilter)) {
+          return processFilter(subFilter, obj);
+        }
+        if (Object.keys(subFilter || {}).length === 0) {
+          return true;
+        }
+        return Object.entries(subFilter)
+          .every(([attribute, value]) => {
+            const actualValue = obj[attribute];
+            if (Array.isArray(value)) {
+              return value.includes(actualValue);
+            }
+
+            return actualValue === value;
+          });
+      });
+    }
+
+    if (Object.keys(filter || {}).length === 0) {
+      return true;
+    }
+    return processFilter([filter], obj);
+  };
+
+  const convertFilterToSequelizeWhere = (filter) => {
+    const where = {};
+    if (Array.isArray(filter)) {
+      if (filter.length === 0) {
+        return {};
+      }
+      const orFilter = [];
+      filter.forEach((subFilter) => {
+        if (Array.isArray(subFilter)) {
+          orFilter.push(convertFilterToSequelizeWhere(subFilter));
+        } else if (Object.keys(subFilter || {}).length > 0) {
+          orFilter.push(subFilter);
+        }
+      });
+      where[Op.or] = orFilter;
+    } else if (Object.keys(filter || {}).length > 0) {
+      return filter;
+    }
+    return where;
+  };
 
   returnObj.getModelsBy = async (models) => (
     Object.fromEntries(
@@ -193,6 +245,74 @@ module.exports = () => {
         file.replace(/\.js$/, ''), // eslint-disable-next-line import/no-dynamic-require, global-require
         require(path.join(__dirname, '../models', file.replace(/\.js$/, '')))(modelParams),
       ]));
+  };
+
+  returnObj.getData = async (models) => (
+    Object.fromEntries(
+      await Promise.all(Object.entries(models).map(([modelName, model]) => (
+        async (modelName, model) => {
+          const rawAttributes = Object.keys(model.rawAttributes);
+          const instances = await model.findAll({
+            ...(rawAttributes.includes('active') ? { where: { active: true } } : {}),
+            ...(rawAttributes.includes('order') ? { order: ['order'] } : {}),
+            raw: true,
+          });
+
+          return [modelName, instances];
+        })(modelName, model))),
+    )
+  );
+
+  returnObj.findOne = async (modelName, filter) => {
+    const {
+      data,
+      models,
+    } = global;
+
+    const useCache = ['1', 'true'].includes(process.env.USE_CACHE);
+    if (useCache) {
+      if (data[modelName]) {
+        return data[modelName].find((instance) => processFilter(filter, instance));
+      }
+
+      throw new Error(`Could not find model ${modelName}`);
+    } else if (models[modelName]) {
+      return models[modelName].findOne({
+        where: {
+          ...convertFilterToSequelizeWhere(filter),
+          active: true,
+        },
+        raw: true,
+      });
+    }
+
+    throw new Error(`Could not find model ${modelName}`);
+  };
+
+  returnObj.findAll = async (modelName, filter) => {
+    const {
+      data,
+      models,
+    } = global;
+
+    const useCache = ['1', 'true'].includes(process.env.USE_CACHE);
+    if (useCache) {
+      if (data[modelName]) {
+        return data[modelName].filter((instance) => processFilter(filter, instance));
+      }
+
+      throw new Error(`Could not find model ${modelName}`);
+    } else if (models[modelName]) {
+      return models[modelName].findAll({
+        where: {
+          ...convertFilterToSequelizeWhere(filter),
+          active: true,
+        },
+        raw: true,
+      });
+    }
+
+    throw new Error(`Could not find model ${modelName}`);
   };
 
   return returnObj;
