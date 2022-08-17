@@ -155,7 +155,7 @@ try {
         port: process.env.DB_PORT,
         logging: async (...msg) => {
           const messages = msg.filter((message) => !_.isPlainObject(message));
-          await logger.debug(messages);
+          await logger.debug(...messages);
           if (isLiveEnv && !global.dbUpdateLock) {
             const sqlWithParams = msg[0].replace(/Executing \(.*?\): /g, '');
             const isSelect = sqlWithParams.match(/^\(*\s*SELECT/i);

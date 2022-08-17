@@ -432,7 +432,7 @@ exports.performDeviceAction = async (deviceData) => {
       }
     };
 
-    const actionValues = Object.entries(deviceData.actions);
+    const actionValues = Object.entries(deviceData.actions).map(([action, value]) => ([action.toLowerCase(), value]));
     totalActions = actionValues.flatMap(([action, value]) => {
       if (action === 'preset') {
         const preset = fn.slugifyKeys(deviceData.presets)[fn.slugify(value)];
@@ -824,9 +824,18 @@ exports.performDeviceActions = async (deviceActions) => {
       const deviceActionCopy = _.cloneDeep(deviceAction);
       const deviceNickname = deviceActionCopy.nickname;
 
-      const devices = devicesByNickname[fn.slugify(deviceNickname)] || [];
+      if (!deviceNickname) {
+        logger.warn('Skipping empty nickname');
+        return;
+      }
 
-      if (devices.length === 0) {
+      const deviceType = deviceNickname.substring(0, 1) === '*' ? deviceNickname.replace(/^\*(.+)/, '$1') : null;
+
+      const matchingDevices = deviceType === null
+        ? devicesByNickname[fn.slugify(deviceNickname)] || []
+        : devices.filter((device) => deviceType === '*' || device.type === deviceType);
+
+      if (matchingDevices.length === 0) {
         errors.push({
           success: false,
           status: 404,
@@ -837,9 +846,9 @@ exports.performDeviceActions = async (deviceActions) => {
         return;
       }
 
-      totalDevices += devices.length;
+      totalDevices += matchingDevices.length;
 
-      await Promise.all(devices.map((device) => (async (device) => {
+      await Promise.all(matchingDevices.map((device) => (async (device) => {
         const deviceInfo = Devices[device.mfg_id];
         if (!deviceInfo) {
           errors.push({
