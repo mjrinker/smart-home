@@ -214,9 +214,7 @@ module.exports = () => {
 
   returnObj.getRoomsConfig = (modelsBy) => _.sortBy(Object.values(modelsBy.Room.id), '0.order').flatMap((roomsById) => (
     roomsById.map((room) => ({
-      id: room.id,
-      label: room.label,
-      name: room.name,
+      ...room,
       actions: constants.roomActions,
       devices: modelsBy.Device.room_id[room.id]?.map((device) => (
         fn.filterObjectProperties(device, constants.deviceProps)
@@ -295,10 +293,38 @@ module.exports = () => {
       models,
     } = global;
 
+    if (!global.models[modelName]) {
+      throw new Error(`Could not find model ${modelName}`);
+    }
+
+    const rawAttributes = Object.keys(global.models[modelName].rawAttributes);
     const useCache = ['1', 'true'].includes(process.env.USE_CACHE);
     if (useCache) {
       if (data[modelName]) {
-        return data[modelName].filter((instance) => processFilter(filter, instance));
+        return data[modelName]
+          .filter((instance) => processFilter(filter, instance))
+          .sort((instance1, instance2) => {
+            // ORDER BY order ASC, label ASC, name ASC, id ASC
+            if (rawAttributes.includes('order')) {
+              if (instance1.order !== instance2.order) {
+                return instance1.order - instance2.order;
+              }
+            }
+            if (rawAttributes.includes('label')) {
+              if (instance1.label.toLowerCase() !== instance2.label.toLowerCase()) {
+                return instance1.label.toLowerCase() <= instance2.label.toLowerCase() ? -1 : 1;
+              }
+            }
+            if (rawAttributes.includes('name')) {
+              if (instance1.name.toLowerCase() !== instance2.name.toLowerCase()) {
+                return instance1.name.toLowerCase() <= instance2.name.toLowerCase() ? -1 : 1;
+              }
+            }
+            if (rawAttributes.includes('id')) {
+              return instance1.id - instance2.id;
+            }
+            return 0;
+          });
       }
 
       throw new Error(`Could not find model ${modelName}`);
@@ -308,6 +334,12 @@ module.exports = () => {
           ...convertFilterToSequelizeWhere(filter),
           active: true,
         },
+        order: [
+          ...rawAttributes.includes('order') ? [['order']] : [],
+          ...rawAttributes.includes('label') ? [['label']] : [],
+          ...rawAttributes.includes('name') ? [['name']] : [],
+          ...rawAttributes.includes('id') ? [['id']] : [],
+        ],
         raw: true,
       });
     }

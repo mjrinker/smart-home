@@ -4,6 +4,7 @@ const deviceHelper = require('../helpers/deviceHelper');
 const roomHelper = require('../helpers/roomHelper');
 
 const {
+  _,
   dataFn,
   fn,
   models,
@@ -184,12 +185,21 @@ exports.getRoom = fn.asyncMw(async (req, res) => {
   });
 });
 
-exports.getRooms = fn.asyncMw(async (req, res) => fn.sendResponse(req, res, 200, {
-  success: true,
-  status: 200,
-  code: 0,
-  rooms: await dataFn.findAll('Room'),
-}));
+exports.getRooms = fn.asyncMw(async (req, res) => {
+  const devicesByRoomId = _.groupBy((await dataFn.findAll('Device')), 'room_id');
+  return fn.sendResponse(req, res, 200, {
+    success: true,
+    status: 200,
+    code: 0,
+    rooms: (await dataFn.findAll('Room')).map((room) => ({
+      ...room,
+      actions: constants.roomActions,
+      devices: devicesByRoomId[room.id]?.map((device) => (
+        fn.filterObjectProperties(device, constants.deviceProps)
+      )) || [],
+    })),
+  });
+});
 
 exports.reassignRoomDevices = fn.asyncMw(async (req, res) => {
   const { roomId } = req.params;
