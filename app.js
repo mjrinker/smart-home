@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const _ = require('lodash');
+const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const delay = require('delay');
@@ -13,6 +14,7 @@ const {
   getSunset: getSunsetOriginal,
 } = require('sunrise-sunset-js');
 const isReachable = require('is-reachable');
+const jwt = require('jsonwebtoken');
 const MerossCloud = require('meross-cloud');
 const moment = require('moment-timezone');
 const path = require('path');
@@ -296,6 +298,7 @@ try {
     const globals = {
       _,
       app,
+      bcrypt,
       Bulb,
       Climate,
       CloudTuya,
@@ -309,6 +312,7 @@ try {
       getSunrise,
       getSunset,
       isReachable,
+      jwt,
       Light,
       logger,
       logout,
@@ -488,7 +492,7 @@ try {
       };
 
       const device = new MerossLocalDevice('token', '', '0', deviceDef, logger);
-      device.connect();
+      // device.connect();
       global.Devices[deviceDef.uuid] = {
         device,
         deviceDef,
