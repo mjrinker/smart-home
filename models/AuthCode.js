@@ -9,6 +9,10 @@ module.exports = (params) => {
       type: params.DataTypes.STRING,
       allowNull: false,
     },
+    active: {
+      type: params.DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   }, {
     sequelize: params.sequelize,
     modelName: 'token',
