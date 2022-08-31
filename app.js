@@ -47,6 +47,7 @@ const Climate = require('./devices/tuya/climate');
 const Fan = require('./devices/tuya/fan');
 const Light = require('./devices/tuya/light');
 
+const MQTTClient = require('./lib/mqtt/MQTTClient');
 const MerossLocalDevice = require('./lib/meross-local/MerossLocalDevice');
 const MerossDevice = require('./devices/meross/device');
 const Bulb = require('./devices/meross/bulb');
@@ -502,6 +503,43 @@ try {
         global.Devices[deviceDef.uuid].Device.state = state;
       });
     });
+
+    const smartHomeMQTTClient = new MQTTClient('token', '', '0', {
+      'stat/tasmota_C013CD/POWER': {
+        nickname: 'office',
+        actionTranslator: (message) => ({
+          action: message,
+          value: true,
+        }),
+      },
+      'stat/tasmota_C013CD/RESULT': {
+        nickname: 'office',
+        actionTranslator: (message) => {
+          try {
+            const brightness = JSON.parse(message)?.Dimmer;
+            if (!brightness) {
+              return {
+                action: JSON.parse(message)?.POWER || 'toggle',
+                value: true,
+              };
+            }
+            return {
+              action: 'brightness',
+              value: brightness,
+            };
+          } catch (e) {
+            return {
+              action: message,
+              value: true,
+            };
+          }
+        },
+      },
+    }, {
+      devName: 'Smart Home API',
+      uuid: '8fb00271-c0db-4d4e-b234-9867272af017',
+    }, logger);
+    smartHomeMQTTClient.connect();
 
     // add remaining globals
     fn = getFunctions();
