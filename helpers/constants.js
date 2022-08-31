@@ -13,3 +13,8 @@ exports.roomActions = [
 
 exports.fadeDelay = 5;
 exports.fadeIncrement = 2;
+
+exports.authTypes = {
+  PASSWORD: 'password',
+  GOOGLE: 'google',
+};

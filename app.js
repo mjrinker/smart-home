@@ -4,6 +4,7 @@ const _ = require('lodash');
 const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const crypto = require('crypto');
 const delay = require('delay');
 const { exec } = require('child_process');
 const express = require('express');
@@ -302,6 +303,7 @@ try {
       Bulb,
       Climate,
       CloudTuya,
+      crypto,
       DataTypes,
       delay,
       express,

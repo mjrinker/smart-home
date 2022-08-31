@@ -285,14 +285,12 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
   let success;
   if (Object.keys(updateObj).length > 0) {
     try {
-      const updated = await models.Room.update(updateObj, {
+      success = !!(await models.Room.update(updateObj, {
         where: {
           id: Number(roomId),
         },
         transaction,
-      });
-
-      success = !!updated[0];
+      }))?.[0];
 
       // no await
       deviceHelper.reassignDeviceRoom(deviceIds, room.id).then(() => {

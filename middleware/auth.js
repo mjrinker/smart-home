@@ -11,14 +11,14 @@ module.exports.authenticateToken = (req, res, next) => {
     });
   }
 
-  return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, trainer) => {
+  return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
     if (err) {
       return res.status(403).send({
         message: 'Forbidden',
       });
     }
 
-    req.trainer = trainer;
+    req.user = user;
     return next();
   });
 };

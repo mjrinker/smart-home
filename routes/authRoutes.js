@@ -9,21 +9,21 @@ const {
 
 const routeList = [
   {
-    path: '/oauth',
+    path: '/google/oauth',
     method: 'get',
     controller: 'authController',
     auth: false,
     versions: [
-      { versions, func: controller.getAuthCode },
+      { versions, func: controller.getOAuthForGoogle },
     ],
   },
   {
-    path: '/oauth',
+    path: '/google',
     method: 'post',
     controller: 'authController',
     auth: false,
     versions: [
-      { versions, func: controller.getToken },
+      { versions, func: controller.getTokenForGoogle },
     ],
   },
 ];
