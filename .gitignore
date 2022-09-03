@@ -9,3 +9,5 @@ keys.json
 .python-version
 pipfreeze.txt
 pid.txt
+/certs/
+.tool-versions

@@ -23,7 +23,7 @@ const {
   Model,
   Op,
   Sequelize,
-  TimeoutError,
+  TimeoutError, cast,
 } = require('sequelize');
 const uuid = require('uuid').v4;
 
@@ -465,7 +465,7 @@ try {
       }
     });
 
-    const merossLocalDevices = await dataFn.findAll('Device', { platform: 'meross_local' });
+    const merossLocalDevices = (await dataFn.findAll('Device', { platform: 'meross_local' }));
 
     // connect to local meross devices
     merossLocalDevices.forEach((savedDevice) => {
@@ -489,7 +489,7 @@ try {
       };
 
       const device = new MerossLocalDevice('token', '', '0', deviceDef, logger);
-      device.connect();
+      if (savedDevice.name.startsWith('office')) device.connect(); // FIXME don't commit this
       global.Devices[deviceDef.uuid] = {
         device,
         deviceDef,
@@ -504,38 +504,180 @@ try {
       });
     });
 
-    const smartHomeMQTTClient = new MQTTClient('token', '', '0', {
-      'stat/tasmota_C013CD/POWER': {
+    global.deviceLinkActions = {};
+    global.debounces = {};
+
+    // TODO add a table for this to the database
+    const linkedDevices = [
+      {
+        topic: 'stat/tasmota_C013CD/POWER',
         nickname: 'office',
-        actionTranslator: (message) => ({
-          action: message,
-          value: true,
-        }),
+        messageDataType: 'string',
+        actionDataType: 'string',
+        actionPath: '$',
+        defaultActionDataType: 'string',
+        defaultAction: 'toggle',
+        defaultActionDataTypeIfNoValue: 'string',
+        actionPathIfNoValue: '$',
+        defaultActionIfNoValue: 'toggle',
+        valuePath: null,
+        valueDataType: 'boolean',
+        defaultValueDataType: 'boolean',
+        defaultValue: 'true',
       },
-      'stat/tasmota_C013CD/RESULT': {
+      {
+        topic: 'stat/tasmota_C013CD/RESULT',
         nickname: 'office',
-        actionTranslator: (message) => {
-          try {
-            const brightness = JSON.parse(message)?.Dimmer;
-            if (!brightness) {
-              return {
-                action: JSON.parse(message)?.POWER || 'toggle',
-                value: true,
-              };
+        messageDataType: 'json',
+        actionDataType: 'string',
+        actionPath: null,
+        defaultActionDataType: 'string',
+        defaultAction: 'brightness',
+        defaultActionDataTypeIfNoValue: 'string',
+        actionPathIfNoValue: '$.POWER',
+        defaultActionIfNoValue: 'toggle',
+        valuePath: '$.Dimmer',
+        valueDataType: 'number',
+        defaultValueDataType: 'boolean',
+        defaultValue: 'true',
+      },
+    ];
+
+    const deviceLinks = Object.fromEntries(linkedDevices.map(({
+      topic,
+      nickname,
+      messageDataType,
+      actionDataType,
+      actionPath,
+      defaultActionDataType,
+      defaultAction,
+      defaultActionDataTypeIfNoValue,
+      actionPathIfNoValue,
+      defaultActionIfNoValue,
+      valuePath,
+      valueDataType,
+      defaultValueDataType,
+      defaultValue,
+    }) => [topic, {
+      nickname,
+      actionTranslator: (message) => {
+        let castMessage = message;
+        if (message) {
+          switch (messageDataType) {
+            case 'json': {
+              try {
+                castMessage = JSON.parse(message);
+              } catch (e) {
+                castMessage = message;
+              }
+              break;
             }
-            return {
-              action: 'brightness',
-              value: brightness,
-            };
-          } catch (e) {
-            return {
-              action: message,
-              value: true,
-            };
+            case 'string':
+            default: {
+              castMessage = message;
+            }
           }
-        },
+        }
+
+        let value;
+        let originalValue;
+        let valueDataTypeToUse;
+        if (typeof castMessage === 'object') {
+          originalValue = valuePath ? _.get(castMessage, valuePath.replace(/^\$\./, '')) : defaultValue;
+          valueDataTypeToUse = valuePath ? valueDataType : defaultValueDataType;
+          if (originalValue) {
+            value = originalValue;
+            valueDataTypeToUse = valuePath ? valueDataType : defaultValueDataType;
+          } else {
+            value = defaultValue;
+            valueDataTypeToUse = defaultValueDataType;
+          }
+        } else {
+          originalValue = castMessage;
+          if (originalValue) {
+            value = originalValue;
+            valueDataTypeToUse = valueDataType;
+          } else {
+            value = defaultValue;
+            valueDataTypeToUse = defaultValueDataType;
+          }
+        }
+
+        if (value) {
+          switch (valueDataTypeToUse) {
+            case 'null': {
+              value = null;
+              break;
+            }
+            case 'boolean': {
+              if (typeof value !== 'boolean') {
+                value = value === 'true';
+              }
+              break;
+            }
+            case 'number': {
+              if (typeof value !== 'number') {
+                value = Number.parseFloat(value ? value.replaceAll(/\D/g, '') : defaultValue);
+                value = Number.isNaN(value) ? Number.parseFloat(defaultValue) : value;
+                value = Number.isNaN(value) ? null : value;
+              }
+              break;
+            }
+            case 'string':
+            default: {
+              value = `${value}`.toLowerCase();
+            }
+          }
+        }
+
+        let action;
+        const actionPathToUse = originalValue == null ? actionPathIfNoValue : actionPath;
+        const defaultActionToUse = originalValue == null ? defaultActionIfNoValue : defaultAction;
+        let actionDataTypeToUse;
+        if (typeof castMessage === 'object') {
+          action = actionPathToUse ? _.get(castMessage, actionPathToUse.replace(/^\$\./, ''), defaultActionToUse) : defaultActionToUse;
+          actionDataTypeToUse = actionPathToUse ? actionDataType : defaultActionDataType;
+        } else {
+          action = castMessage || defaultActionToUse;
+          actionDataTypeToUse = castMessage ? actionDataType : defaultActionDataType;
+        }
+        actionDataTypeToUse = originalValue == null ? defaultActionDataTypeIfNoValue : actionDataTypeToUse;
+
+        if (action) {
+          switch (actionDataTypeToUse) {
+            case 'null': {
+              action = null;
+              break;
+            }
+            case 'boolean': {
+              if (typeof action !== 'boolean') {
+                action = action === 'true';
+              }
+              break;
+            }
+            case 'number': {
+              if (typeof action !== 'number') {
+                action = Number.parseFloat(action ? action.replaceAll(/\D/g, '') : defaultActionToUse);
+                action = Number.isNaN(action) ? Number.parseFloat(defaultActionToUse) : action;
+                action = Number.isNaN(action) ? 0 : action;
+              }
+              break;
+            }
+            case 'string':
+            default: {
+              action = `${action}`.toLowerCase();
+            }
+          }
+        }
+
+        return {
+          action,
+          value,
+        };
       },
-    }, {
+    }]));
+
+    const smartHomeMQTTClient = new MQTTClient('token', '', '0', deviceLinks, {
       devName: 'Smart Home API',
       uuid: '8fb00271-c0db-4d4e-b234-9867272af017',
     }, logger);
