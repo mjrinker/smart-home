@@ -17,8 +17,8 @@ const {
   steelBlue4,
 } = require('./ansicodes');
 
-const showDebugLogs = Boolean(Number(process.env.SHOW_DEBUG_LOGS)) || (process.env.SHOW_DEBUG_LOGS || '').toLowerCase() !== 'false';
-const logLiteralNewlines = Boolean(Number(process.env.LOG_LITERAL_NEWLINES)) || (process.env.LOG_LITERAL_NEWLINES || '').toLowerCase() !== 'false';
+const showDebugLogs = (process.env.SHOW_DEBUG_LOGS || '').toLowerCase() === 'true' || Boolean(Number(process.env.SHOW_DEBUG_LOGS));
+const logLiteralNewlines = (process.env.LOG_LITERAL_NEWLINES || '').toLowerCase() === 'true' || Boolean(Number(process.env.LOG_LITERAL_NEWLINES));
 
 const formatLoggerMessage = (msg) => {
   if (Array.isArray(msg) || _.isPlainObject(msg)) {
