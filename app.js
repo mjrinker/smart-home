@@ -23,7 +23,7 @@ const {
   Model,
   Op,
   Sequelize,
-  TimeoutError, cast,
+  TimeoutError,
 } = require('sequelize');
 const uuid = require('uuid').v4;
 
@@ -48,11 +48,12 @@ const Fan = require('./devices/tuya/fan');
 const Light = require('./devices/tuya/light');
 
 const MQTTClient = require('./lib/mqtt/MQTTClient');
-const MerossLocalDevice = require('./lib/meross-local/MerossLocalDevice');
+const MerossLocalDeviceClient = require('./lib/meross-local/MerossLocalDeviceClient');
 const MerossDevice = require('./devices/meross/device');
 const Bulb = require('./devices/meross/bulb');
 const Thermostat = require('./devices/meross/thermostat');
 const Plug = require('./devices/meross/plug');
+const TasmotaDeviceClient = require('./lib/tasmota-local/TasmotaDeviceClient');
 // TODO add more device classes:
 // const Hub = require('./devices/meross/hub');
 // const Humidifier = require('./devices/meross/humidifier');
@@ -488,7 +489,7 @@ try {
         channels: [0],
       };
 
-      const device = new MerossLocalDevice('token', '', '0', deviceDef, logger);
+      const device = new MerossLocalDeviceClient('token', '', '0', deviceDef, logger);
       if (savedDevice.name.startsWith('office')) device.connect(); // FIXME don't commit this
       global.Devices[deviceDef.uuid] = {
         device,
@@ -508,6 +509,92 @@ try {
     global.debounces = {};
 
     // TODO add a table for this to the database
+    const newLinkedDevices = [
+      {
+        source_model: 'device',
+        source_model_id: 0,
+        target_model: 'group',
+        target_model_id: 11,
+        event: 'power',
+        action: 'mirror',
+        value: 'true',
+        value_datatype: 'boolean',
+      },
+      {
+        source_model: 'device',
+        source_model_id: 0,
+        target_model: 'group',
+        target_model_id: 11,
+        event: 'dimmer',
+        action: 'brightness',
+        value: 'mirror',
+        value_datatype: 'number',
+      },
+    ];
+
+    const newDeviceLinks = await fn.asyncArrayIterator(newLinkedDevices, 'map', async ({
+      /* eslint-disable camelcase */
+      source_device_id,
+      target_model,
+      target_model_id,
+      event,
+      action,
+      value,
+      value_datatype,
+      /* eslint-enable camelcase */
+    }) => {
+      const sourceDevice = await dataFn.findOne('Device', { id: source_device_id });
+      const targetDevices = await getDevicesByModelId(target_model, target_model_id);
+      let sourceDeviceTopic;
+      let TopicProvider;
+      switch (sourceDevice.platform) {
+        case 'meross':
+        case 'meross_local': {
+          TopicProvider = MerossLocalDeviceClient;
+          break;
+        }
+        case 'tasmota': {
+          TopicProvider = TasmotaDeviceClient;
+          break;
+        }
+        default: {
+          throw new Error(`no topic provider for platform ${sourceDevice.platform}`);
+        }
+      }
+
+      switch (event) {
+        case 'power': {
+          sourceDeviceTopic = TopicProvider.getPowerTopic()?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfg_id);
+          break;
+        }
+        case 'dimmer': {
+          sourceDeviceTopic = TopicProvider.getDimmerTopic()?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfg_id);
+          break;
+        }
+        default: {
+          throw new Error(`no topic for event ${event}`);
+        }
+      }
+
+      if (!sourceDeviceTopic) {
+        throw new Error(`no event ${event} for source device ${source_device_id}`);
+      }
+
+      return targetDevices.map(({ name }) => (message) => {
+        const extractedValue = sourceDeviceTopic.extractor(message);
+        const mirroredAction = event === 'power' ? extractedValue.toLowerCase() : event;
+        const deviceAction = action === 'mirror' ? mirroredAction : action;
+        const castedValue = fn.castActionValue(value === 'mirror' ? extractedValue : value, value_datatype);
+        return {
+          nickname: name,
+          actions: [{
+            action: deviceAction,
+            value: castedValue,
+          }],
+        };
+      });
+    });
+
     const linkedDevices = [
       {
         topic: 'stat/tasmota_C013CD/POWER',
