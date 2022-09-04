@@ -1,29 +1,26 @@
-const { promisify } = require('util');
-
 class TasmotaDevice {
-  constructor(options) {
-    if (!options.deviceId) {
-      throw new Error('Please pass the Tasmota Device ID');
+  constructor({
+    client,
+    device,
+    presets,
+  }) {
+    if (!client) {
+      throw new Error('Please pass the Tasmota Device Client');
     }
-    this.deviceId = options.deviceId;
+    this.client = client;
 
-    if (!options.device) {
+    if (!device) {
       throw new Error('Please pass the Tasmota Device');
     }
-    this.device = options.device;
-
-    if (!options.deviceDef) {
-      throw new Error('Please pass the Tasmota Device Definition');
-    }
-    this.deviceDef = options.deviceDef;
-    this.name = this.deviceDef.devName;
+    this.device = device;
+    this.name = this.device.name;
 
     this.online = true;
     this.state = true;
     this.override = true;
     this.lock = false;
 
-    this.presets = { values: options.presets || [] };
+    this.presets = { values: presets || [] };
     this.presets.iterator = this.presets.values[Symbol.iterator]();
     this.presets.next = () => {
       let next = this.presets.iterator.next();
@@ -39,18 +36,13 @@ class TasmotaDevice {
         next = this.presets.iterator.next();
       } while (!next.done);
     };
-
-    this.controlToggleX = promisify(this.device.controlToggleX).bind(this.device);
-    this.getSystemAllData = promisify(this.device.getSystemAllData).bind(this.device);
-    this.getOnlineStatus = promisify(this.device.getOnlineStatus).bind(this.device);
-    this.getSystemAbilities = promisify(this.device.getSystemAbilities).bind(this.device);
   }
 
   async turnOn() {
     try {
       const previousState = this.state;
       this.state = true;
-      this.controlToggleX(0, true).catch(() => {
+      this.client.togglePower(true).catch(() => {
         this.state = previousState;
       });
       return {
@@ -63,10 +55,8 @@ class TasmotaDevice {
             light_state: null,
           },
           name: this.name,
-          icon: this.deviceDef.userDevIcon || this.deviceDef.devIconId,
-          id: this.deviceDef.uuid,
-          dev_type: this.deviceDef.deviceType,
-          ha_type: this.deviceDef.deviceType,
+          icon: this.device.icon,
+          id: this.device.id,
         },
       };
     } catch (error) {
@@ -74,7 +64,7 @@ class TasmotaDevice {
         success: false,
         status: 500,
         error: 'TOGGLE_ERROR',
-        message: `Cannot turn device on: mfg_id ${this.deviceId}`,
+        message: `Cannot turn device on: id ${this.device.id}`,
         originalError: error,
       };
     }
@@ -84,7 +74,7 @@ class TasmotaDevice {
     try {
       const previousState = this.state;
       this.state = false;
-      this.controlToggleX(0, false).catch(() => {
+      this.client.togglePower(false).catch(() => {
         this.state = previousState;
       });
       return {
@@ -97,10 +87,8 @@ class TasmotaDevice {
             light_state: null,
           },
           name: this.name,
-          icon: this.deviceDef.userDevIcon || this.deviceDef.devIconId,
-          id: this.deviceDef.uuid,
-          dev_type: this.deviceDef.deviceType,
-          ha_type: this.deviceDef.deviceType,
+          icon: this.device.icon,
+          id: this.device.id,
         },
       };
     } catch (error) {
@@ -108,23 +96,19 @@ class TasmotaDevice {
         success: false,
         status: 500,
         error: 'TOGGLE_ERROR',
-        message: `Cannot turn device on: mfg_id ${this.deviceId}`,
+        message: `Cannot turn device on: id ${this.device.id}`,
         originalError: error,
       };
     }
   }
 
   async toggle() {
-    if (this.state) {
-      return this.turnOff().catch(() => {});
-    }
-    return this.turnOn().catch(() => {});
+    return this.client.togglePower().catch(() => {});
   }
 
   async isOnline() {
     try {
-      const response = await this.getOnlineStatus();
-      this.online = !!response?.online?.status;
+      this.online = await this.client.getOnlineStatus();
       return this.online;
     } catch (error) {
       return false;
@@ -133,8 +117,7 @@ class TasmotaDevice {
 
   async isOn() {
     try {
-      const response = await this.getSystemAllData();
-      this.state = !!response?.all?.digest?.togglex[0]?.onoff;
+      this.state = await this.client.getPowerState();
       return this.state;
     } catch (error) {
       return false;
@@ -142,28 +125,17 @@ class TasmotaDevice {
   }
 
   async getState() {
-    return {
-      online: await this.isOnline(),
-      state: await this.isOn(),
-    };
-  }
-
-  async getSkills() {
     try {
-      const response = await this.getSystemAbilities();
-      return response.ability;
-    } catch (error) {
-      return {};
+      this.state = await this.isOn();
+      this.online = this.state;
+    } catch (e) {
+      this.state = false;
+      this.online = false;
     }
-  }
-
-  async supportsFeature(feature, callback = null) {
-    const skills = await this.getSkills();
-    return callback === null ? !!skills[feature] : callback(skills[feature]);
-  }
-
-  async supportsLightControl() {
-    return this.supportsFeature('Appliance.Control.Light').catch(() => {});
+    return {
+      online: this.online,
+      state: this.state,
+    };
   }
 }
 
