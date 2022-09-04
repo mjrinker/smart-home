@@ -483,8 +483,8 @@ try {
         hdwareVersion: savedDevice.hardware_version,
         skillNumber: '2',
         region: process.env.REGION,
-        domain: '192.168.0.107',
-        reservedDomain: '192.168.0.107',
+        domain: process.env.LOCAL_MQTT_HOSTNAME || 'localhost',
+        reservedDomain: process.env.LOCAL_MQTT_HOSTNAME || 'localhost',
         bindTime: 12,
         channels: [0],
       };
