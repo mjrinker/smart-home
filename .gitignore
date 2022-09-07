@@ -11,3 +11,4 @@ pipfreeze.txt
 pid.txt
 /certs/
 .tool-versions
+.vscode/*

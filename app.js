@@ -491,7 +491,7 @@ try {
       };
 
       const device = new MerossLocalDeviceClient('token', '', '0', deviceDef, logger);
-      if (savedDevice.name.startsWith('office')) device.connect(); // FIXME don't commit this
+      device.connect();
       global.Devices[deviceDef.uuid] = {
         device,
         deviceDef,
