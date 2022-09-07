@@ -152,78 +152,78 @@ try {
       process.env.DB_NAME,
       process.env.DB_USERNAME,
       process.env.DB_PASSWORD, {
-        host: process.env.DB_HOSTNAME,
-        dialect: process.env.DB_DIALECT,
-        port: process.env.DB_PORT,
-        logging: async (...msg) => {
-          const messages = msg.filter((message) => !_.isPlainObject(message));
-          await logger.debug(...messages);
-          if (isLiveEnv && !global.dbUpdateLock) {
-            const sqlWithParams = msg[0].replace(/Executing \(.*?\): /g, '');
-            const isSelect = sqlWithParams.match(/^\(*\s*SELECT/i);
-            const tableIsDbUpdates = sqlWithParams.match(/^\(*\s*(?:UPDATE|INSERT INTO|DELETE FROM) `?db_updates`?/i);
-            const isTransaction = sqlWithParams.match(/^\(*\s*(?:START TRANSACTION|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|SET autocommit = )/i);
-            if (!isSelect && !tableIsDbUpdates && !isTransaction) {
-              const [sqlSafe, sqlParams] = sqlWithParams.split(/;\s*/, 2);
-              let sql = sqlSafe;
-              sqlParams?.split(/,\s*/).forEach((param) => {
-                const formattedParam = param.replace(/^"|"$/g, "'");
-                sql = sql.replace('?', formattedParam);
+      host: process.env.DB_HOSTNAME,
+      dialect: process.env.DB_DIALECT,
+      port: process.env.DB_PORT,
+      logging: async (...msg) => {
+        const messages = msg.filter((message) => !_.isPlainObject(message));
+        await logger.debug(...messages);
+        if (isLiveEnv && !global.dbUpdateLock) {
+          const sqlWithParams = msg[0].replace(/Executing \(.*?\): /g, '');
+          const isSelect = sqlWithParams.match(/^\(*\s*SELECT/i);
+          const tableIsDbUpdates = sqlWithParams.match(/^\(*\s*(?:UPDATE|INSERT INTO|DELETE FROM) `?db_updates`?/i);
+          const isTransaction = sqlWithParams.match(/^\(*\s*(?:START TRANSACTION|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|SET autocommit = )/i);
+          if (!isSelect && !tableIsDbUpdates && !isTransaction) {
+            const [sqlSafe, sqlParams] = sqlWithParams.split(/;\s*/, 2);
+            let sql = sqlSafe;
+            sqlParams?.split(/,\s*/).forEach((param) => {
+              const formattedParam = param.replace(/^"|"$/g, "'");
+              sql = sql.replace('?', formattedParam);
+            });
+
+            sql = `${sql};\n\n`;
+
+            const dbUpdateDirPath = path.join(__dirname, 'sql', 'db_updates');
+            const dbUpdateFilenames = fs.readdirSync(dbUpdateDirPath);
+
+            const dbUpdateNameRegExp = new RegExp(`^${moment().tz(process.env.TZ || 'UTC').format('YYYYMMDD')}\\d{6}_${dbUpdateSuffix}`);
+            const dbUpdateNameMatch = _.find(dbUpdateFilenames, (filename) => (
+              filename.match(dbUpdateNameRegExp)
+            ));
+
+            let dbUpdateName;
+            if (dbUpdateNameMatch) {
+              dbUpdateName = dbUpdateNameMatch.replace(/\.sql$/, '');
+            } else {
+              dbUpdateName = `${moment().tz(process.env.TZ || 'UTC').format('YYYYMMDDHHmmss')}_${dbUpdateSuffix}`;
+            }
+
+            const dbUpdateFilename = `${dbUpdateName}.sql`;
+            const dbUpdateFilepath = path.join(dbUpdateDirPath, dbUpdateFilename);
+            fs.writeFileSync(dbUpdateFilepath, sql, { flag: 'a+' });
+
+            const transaction = await sequelize.transaction();
+            try {
+              await global.DBUpdate.findOrCreate({
+                where: {
+                  name: dbUpdateName,
+                },
+                defaults: {
+                  name: dbUpdateName,
+                },
+                transaction,
               });
-
-              sql = `${sql};\n\n`;
-
-              const dbUpdateDirPath = path.join(__dirname, 'sql', 'db_updates');
-              const dbUpdateFilenames = fs.readdirSync(dbUpdateDirPath);
-
-              const dbUpdateNameRegExp = new RegExp(`^${moment().tz(process.env.TZ || 'UTC').format('YYYYMMDD')}\\d{6}_${dbUpdateSuffix}`);
-              const dbUpdateNameMatch = _.find(dbUpdateFilenames, (filename) => (
-                filename.match(dbUpdateNameRegExp)
-              ));
-
-              let dbUpdateName;
-              if (dbUpdateNameMatch) {
-                dbUpdateName = dbUpdateNameMatch.replace(/\.sql$/, '');
-              } else {
-                dbUpdateName = `${moment().tz(process.env.TZ || 'UTC').format('YYYYMMDDHHmmss')}_${dbUpdateSuffix}`;
-              }
-
-              const dbUpdateFilename = `${dbUpdateName}.sql`;
-              const dbUpdateFilepath = path.join(dbUpdateDirPath, dbUpdateFilename);
-              fs.writeFileSync(dbUpdateFilepath, sql, { flag: 'a+' });
-
-              const transaction = await sequelize.transaction();
-              try {
-                await global.DBUpdate.findOrCreate({
-                  where: {
-                    name: dbUpdateName,
-                  },
-                  defaults: {
-                    name: dbUpdateName,
-                  },
-                  transaction,
-                });
-                await transaction.commit();
-              } catch (error) {
-                await transaction.rollback();
-              }
+              await transaction.commit();
+            } catch (error) {
+              await transaction.rollback();
             }
           }
-        },
-        logQueryParameters: true,
-        dialectOptions: {
-          multipleStatements: true,
-        },
-        retry: {
-          match: [
-            ConnectionError,
-            ConnectionTimedOutError,
-            TimeoutError,
-            /Lock wait timeout exceeded/i,
-          ],
-          max: 3,
-        },
+        }
       },
+      logQueryParameters: true,
+      dialectOptions: {
+        multipleStatements: true,
+      },
+      retry: {
+        match: [
+          ConnectionError,
+          ConnectionTimedOutError,
+          TimeoutError,
+          /Lock wait timeout exceeded/i,
+        ],
+        max: 3,
+      },
+    },
     );
 
     await sequelize.authenticate();
@@ -282,7 +282,7 @@ try {
     global.merossAPI = new MerossCloud({
       email: process.env.MEROSS_USERNAME,
       password: process.env.MEROSS_PASSWORD,
-      logger: () => {},
+      logger: () => { },
     });
 
     // initialize tuya connection
@@ -490,7 +490,7 @@ try {
       };
 
       const device = new MerossLocalDeviceClient('token', '', '0', deviceDef, logger);
-      if (savedDevice.name.startsWith('office')) device.connect(); // FIXME don't commit this
+      device.connect();
       global.Devices[deviceDef.uuid] = {
         device,
         deviceDef,
@@ -810,7 +810,7 @@ try {
     fs.readdir(routesDir, (err, files) => {
       files.forEach((file) => {
         if (!ignoreRoutes[file.replace(/\.js$/, '')]) {
-        // eslint-disable-next-line import/no-dynamic-require, global-require
+          // eslint-disable-next-line import/no-dynamic-require, global-require
           require(path.join(routesDir, file));
         }
       });
