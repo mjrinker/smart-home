@@ -13,12 +13,13 @@ class TasmotaDevice {
       throw new Error('Please pass the Tasmota Device');
     }
     this.device = device;
-    this.name = this.device.name;
+    this.name = this.device.label;
 
     this.online = true;
     this.state = true;
     this.override = true;
     this.lock = false;
+    this.dimmer = 0;
 
     this.presets = { values: presets || [] };
     this.presets.iterator = this.presets.values[Symbol.iterator]();
@@ -52,7 +53,6 @@ class TasmotaDevice {
           data: {
             online: true,
             state: true,
-            light_state: null,
           },
           name: this.name,
           icon: this.device.icon,
@@ -84,7 +84,6 @@ class TasmotaDevice {
           data: {
             online: true,
             state: false,
-            light_state: null,
           },
           name: this.name,
           icon: this.device.icon,
@@ -103,7 +102,7 @@ class TasmotaDevice {
   }
 
   async toggle() {
-    return this.client.togglePower().catch(() => {});
+    return this.client.togglePower().catch(() => { });
   }
 
   async isOnline() {

@@ -54,6 +54,7 @@ const Bulb = require('./devices/meross/bulb');
 const Thermostat = require('./devices/meross/thermostat');
 const Plug = require('./devices/meross/plug');
 const TasmotaDeviceClient = require('./lib/tasmota-local/TasmotaDeviceClient');
+const Dimmer = require('./devices/tasmota/dimmer');
 // TODO add more device classes:
 // const Hub = require('./devices/meross/hub');
 // const Humidifier = require('./devices/meross/humidifier');
@@ -151,79 +152,80 @@ try {
     const sequelize = new Sequelize(
       process.env.DB_NAME,
       process.env.DB_USERNAME,
-      process.env.DB_PASSWORD, {
-      host: process.env.DB_HOSTNAME,
-      dialect: process.env.DB_DIALECT,
-      port: process.env.DB_PORT,
-      logging: async (...msg) => {
-        const messages = msg.filter((message) => !_.isPlainObject(message));
-        await logger.debug(...messages);
-        if (isLiveEnv && !global.dbUpdateLock) {
-          const sqlWithParams = msg[0].replace(/Executing \(.*?\): /g, '');
-          const isSelect = sqlWithParams.match(/^\(*\s*SELECT/i);
-          const tableIsDbUpdates = sqlWithParams.match(/^\(*\s*(?:UPDATE|INSERT INTO|DELETE FROM) `?db_updates`?/i);
-          const isTransaction = sqlWithParams.match(/^\(*\s*(?:START TRANSACTION|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|SET autocommit = )/i);
-          if (!isSelect && !tableIsDbUpdates && !isTransaction) {
-            const [sqlSafe, sqlParams] = sqlWithParams.split(/;\s*/, 2);
-            let sql = sqlSafe;
-            sqlParams?.split(/,\s*/).forEach((param) => {
-              const formattedParam = param.replace(/^"|"$/g, "'");
-              sql = sql.replace('?', formattedParam);
-            });
-
-            sql = `${sql};\n\n`;
-
-            const dbUpdateDirPath = path.join(__dirname, 'sql', 'db_updates');
-            const dbUpdateFilenames = fs.readdirSync(dbUpdateDirPath);
-
-            const dbUpdateNameRegExp = new RegExp(`^${moment().tz(process.env.TZ || 'UTC').format('YYYYMMDD')}\\d{6}_${dbUpdateSuffix}`);
-            const dbUpdateNameMatch = _.find(dbUpdateFilenames, (filename) => (
-              filename.match(dbUpdateNameRegExp)
-            ));
-
-            let dbUpdateName;
-            if (dbUpdateNameMatch) {
-              dbUpdateName = dbUpdateNameMatch.replace(/\.sql$/, '');
-            } else {
-              dbUpdateName = `${moment().tz(process.env.TZ || 'UTC').format('YYYYMMDDHHmmss')}_${dbUpdateSuffix}`;
-            }
-
-            const dbUpdateFilename = `${dbUpdateName}.sql`;
-            const dbUpdateFilepath = path.join(dbUpdateDirPath, dbUpdateFilename);
-            fs.writeFileSync(dbUpdateFilepath, sql, { flag: 'a+' });
-
-            const transaction = await sequelize.transaction();
-            try {
-              await global.DBUpdate.findOrCreate({
-                where: {
-                  name: dbUpdateName,
-                },
-                defaults: {
-                  name: dbUpdateName,
-                },
-                transaction,
+      process.env.DB_PASSWORD,
+      {
+        host: process.env.DB_HOSTNAME,
+        dialect: process.env.DB_DIALECT,
+        port: process.env.DB_PORT,
+        logging: async (...msg) => {
+          const messages = msg.filter((message) => !_.isPlainObject(message));
+          await logger.debug(...messages);
+          if (isLiveEnv && !global.dbUpdateLock) {
+            const sqlWithParams = msg[0].replace(/Executing \(.*?\): /g, '');
+            const isSelect = sqlWithParams.match(/^\(*\s*SELECT/i);
+            const tableIsDbUpdates = sqlWithParams.match(/^\(*\s*(?:UPDATE|INSERT INTO|DELETE FROM) `?db_updates`?/i);
+            const isTransaction = sqlWithParams.match(/^\(*\s*(?:START TRANSACTION|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|SET autocommit = )/i);
+            if (!isSelect && !tableIsDbUpdates && !isTransaction) {
+              const [sqlSafe, sqlParams] = sqlWithParams.split(/;\s*/, 2);
+              let sql = sqlSafe;
+              sqlParams?.split(/,\s*/).forEach((param) => {
+                const formattedParam = param.replace(/^"|"$/g, "'");
+                sql = sql.replace('?', formattedParam);
               });
-              await transaction.commit();
-            } catch (error) {
-              await transaction.rollback();
+
+              sql = `${sql};\n\n`;
+
+              const dbUpdateDirPath = path.join(__dirname, 'sql', 'db_updates');
+              const dbUpdateFilenames = fs.readdirSync(dbUpdateDirPath);
+
+              const dbUpdateNameRegExp = new RegExp(`^${moment().tz(process.env.TZ || 'UTC').format('YYYYMMDD')}\\d{6}_${dbUpdateSuffix}`);
+              const dbUpdateNameMatch = _.find(dbUpdateFilenames, (filename) => (
+                filename.match(dbUpdateNameRegExp)
+              ));
+
+              let dbUpdateName;
+              if (dbUpdateNameMatch) {
+                dbUpdateName = dbUpdateNameMatch.replace(/\.sql$/, '');
+              } else {
+                dbUpdateName = `${moment().tz(process.env.TZ || 'UTC').format('YYYYMMDDHHmmss')}_${dbUpdateSuffix}`;
+              }
+
+              const dbUpdateFilename = `${dbUpdateName}.sql`;
+              const dbUpdateFilepath = path.join(dbUpdateDirPath, dbUpdateFilename);
+              fs.writeFileSync(dbUpdateFilepath, sql, { flag: 'a+' });
+
+              const transaction = await sequelize.transaction();
+              try {
+                await global.DBUpdate.findOrCreate({
+                  where: {
+                    name: dbUpdateName,
+                  },
+                  defaults: {
+                    name: dbUpdateName,
+                  },
+                  transaction,
+                });
+                await transaction.commit();
+              } catch (error) {
+                await transaction.rollback();
+              }
             }
           }
-        }
+        },
+        logQueryParameters: true,
+        dialectOptions: {
+          multipleStatements: true,
+        },
+        retry: {
+          match: [
+            ConnectionError,
+            ConnectionTimedOutError,
+            TimeoutError,
+            /Lock wait timeout exceeded/i,
+          ],
+          max: 3,
+        },
       },
-      logQueryParameters: true,
-      dialectOptions: {
-        multipleStatements: true,
-      },
-      retry: {
-        match: [
-          ConnectionError,
-          ConnectionTimedOutError,
-          TimeoutError,
-          /Lock wait timeout exceeded/i,
-        ],
-        max: 3,
-      },
-    },
     );
 
     await sequelize.authenticate();
@@ -372,6 +374,9 @@ try {
         mss620: Plug,
         mss630: Plug,
       },
+      tasmota: {
+        Gosund_SW2: Dimmer,
+      },
     };
 
     // connect to tuya and discover devices
@@ -466,7 +471,7 @@ try {
       }
     });
 
-    const merossLocalDevices = (await dataFn.findAll('Device', { platform: 'meross_local' }));
+    const merossLocalDevices = await dataFn.findAll('Device', { platform: 'meross_local' });
 
     // connect to local meross devices
     merossLocalDevices.forEach((savedDevice) => {
@@ -490,61 +495,86 @@ try {
       };
 
       const device = new MerossLocalDeviceClient('token', '', '0', deviceDef, logger);
-      device.connect();
+
+      const DeviceType = global.deviceTypeClassMap?.meross?.[deviceDef.deviceType];
       global.Devices[deviceDef.uuid] = {
         device,
         deviceDef,
-        Device: new Bulb({
+        Device: new DeviceType({
           deviceId: deviceDef.uuid,
           device,
           deviceDef,
         }),
       };
-      global.Devices[deviceDef.uuid].Device.isOn().then((state) => {
-        global.Devices[deviceDef.uuid].Device.state = state;
+
+      device.connect(() => {
+        global.Devices[deviceDef.uuid].Device.isOn().then((state) => {
+          global.Devices[deviceDef.uuid].Device.state = state;
+        });
+      });
+    });
+
+    const tasmotaDevices = await dataFn.findAll('Device', { platform: 'tasmota' });
+
+    tasmotaDevices.forEach((savedDevice) => {
+      const deviceDef = {
+        uuid: savedDevice.mfg_id,
+        onlineStatus: 1,
+        devName: savedDevice.label,
+        devIconId: savedDevice.type,
+        userDevIcon: savedDevice.type,
+        iconType: 1,
+        deviceType: savedDevice.mfg_model,
+        subType: savedDevice.mfg_sub_model,
+        fmwareVersion: savedDevice.firmware_version,
+        hdwareVersion: savedDevice.hardware_version,
+        skillNumber: '2',
+        region: process.env.REGION,
+        domain: process.env.LOCAL_MQTT_HOSTNAME || 'localhost',
+        reservedDomain: process.env.LOCAL_MQTT_HOSTNAME || 'localhost',
+        bindTime: 12,
+        channels: [0],
+      };
+
+      const client = new TasmotaDeviceClient(savedDevice.name, 'princetonreverb', {
+        devName: savedDevice.name,
+        id: savedDevice.mfg_id,
+      }, logger);
+
+      const DeviceType = global.deviceTypeClassMap?.tasmota?.[deviceDef.deviceType];
+      global.Devices[deviceDef.uuid] = {
+        device: client,
+        deviceDef,
+        Device: new DeviceType({
+          client,
+          device: savedDevice,
+        }),
+      };
+
+      client.connect(() => {
+        global.Devices[deviceDef.uuid].Device.isOn().then((state) => {
+          global.Devices[deviceDef.uuid].Device.state = state;
+        });
       });
     });
 
     global.deviceLinkActions = {};
     global.debounces = {};
+    global.actionPropagation = {};
 
-    // TODO add a table for this to the database
-    const newLinkedDevices = [
-      {
-        source_model: 'device',
-        source_model_id: 0,
-        target_model: 'group',
-        target_model_id: 11,
-        event: 'power',
-        action: 'mirror',
-        value: 'true',
-        value_datatype: 'boolean',
-      },
-      {
-        source_model: 'device',
-        source_model_id: 0,
-        target_model: 'group',
-        target_model_id: 11,
-        event: 'dimmer',
-        action: 'brightness',
-        value: 'mirror',
-        value_datatype: 'number',
-      },
-    ];
-
-    const newDeviceLinks = await fn.asyncArrayIterator(newLinkedDevices, 'map', async ({
-      /* eslint-disable camelcase */
-      source_device_id,
-      target_model,
-      target_model_id,
+    const linkedDevices = await dataFn.findAll('LinkedDevice');
+    const deviceLinks = _.groupBy(await fn.asyncArrayIterator(linkedDevices, 'map', async ({
+      source_device_id: sourceDeviceId,
+      target_model: targetModel,
+      target_model_id: targetModelId,
       event,
       action,
       value,
-      value_datatype,
-      /* eslint-enable camelcase */
+      datatype,
     }) => {
-      const sourceDevice = await dataFn.findOne('Device', { id: source_device_id });
-      const targetDevices = await getDevicesByModelId(target_model, target_model_id);
+      const sourceDevice = await dataFn.findOne('Device', { id: sourceDeviceId });
+      const targetDevices = await dataFn.getDevicesByModelId(targetModel, targetModelId);
+
       let sourceDeviceTopic;
       let TopicProvider;
       switch (sourceDevice.platform) {
@@ -563,12 +593,18 @@ try {
       }
 
       switch (event) {
+        case 'on':
+        case 'off':
         case 'power': {
-          sourceDeviceTopic = TopicProvider.getPowerTopic()?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfg_id);
+          sourceDeviceTopic = TopicProvider.getPowerTopic();
+          break;
+        }
+        case 'brightness': {
+          sourceDeviceTopic = TopicProvider.getBrightnessTopic();
           break;
         }
         case 'dimmer': {
-          sourceDeviceTopic = TopicProvider.getDimmerTopic()?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfg_id);
+          sourceDeviceTopic = TopicProvider.getDimmerTopic();
           break;
         }
         default: {
@@ -577,192 +613,20 @@ try {
       }
 
       if (!sourceDeviceTopic) {
-        throw new Error(`no event ${event} for source device ${source_device_id}`);
+        throw new Error(`no event ${event} for source device ${sourceDevice.id}`);
       }
 
-      return targetDevices.map(({ name }) => (message) => {
-        const extractedValue = sourceDeviceTopic.extractor(message);
-        const mirroredAction = event === 'power' ? extractedValue.toLowerCase() : event;
-        const deviceAction = action === 'mirror' ? mirroredAction : action;
-        const castedValue = fn.castActionValue(value === 'mirror' ? extractedValue : value, value_datatype);
-        return {
-          nickname: name,
-          actions: [{
-            action: deviceAction,
-            value: castedValue,
-          }],
-        };
-      });
-    });
-
-    const linkedDevices = [
-      {
-        topic: 'stat/tasmota_C013CD/POWER',
-        nickname: 'office',
-        messageDataType: 'string',
-        actionDataType: 'string',
-        actionPath: '$',
-        defaultActionDataType: 'string',
-        defaultAction: 'toggle',
-        defaultActionDataTypeIfNoValue: 'string',
-        actionPathIfNoValue: '$',
-        defaultActionIfNoValue: 'toggle',
-        valuePath: null,
-        valueDataType: 'boolean',
-        defaultValueDataType: 'boolean',
-        defaultValue: 'true',
-      },
-      {
-        topic: 'stat/tasmota_C013CD/RESULT',
-        nickname: 'office',
-        messageDataType: 'json',
-        actionDataType: 'string',
-        actionPath: null,
-        defaultActionDataType: 'string',
-        defaultAction: 'brightness',
-        defaultActionDataTypeIfNoValue: 'string',
-        actionPathIfNoValue: '$.POWER',
-        defaultActionIfNoValue: 'toggle',
-        valuePath: '$.Dimmer',
-        valueDataType: 'number',
-        defaultValueDataType: 'boolean',
-        defaultValue: 'true',
-      },
-    ];
-
-    const deviceLinks = Object.fromEntries(linkedDevices.map(({
-      topic,
-      nickname,
-      messageDataType,
-      actionDataType,
-      actionPath,
-      defaultActionDataType,
-      defaultAction,
-      defaultActionDataTypeIfNoValue,
-      actionPathIfNoValue,
-      defaultActionIfNoValue,
-      valuePath,
-      valueDataType,
-      defaultValueDataType,
-      defaultValue,
-    }) => [topic, {
-      nickname,
-      actionTranslator: (message) => {
-        let castMessage = message;
-        if (message) {
-          switch (messageDataType) {
-            case 'json': {
-              try {
-                castMessage = JSON.parse(message);
-              } catch (e) {
-                castMessage = message;
-              }
-              break;
-            }
-            case 'string':
-            default: {
-              castMessage = message;
-            }
-          }
-        }
-
-        let value;
-        let originalValue;
-        let valueDataTypeToUse;
-        if (typeof castMessage === 'object') {
-          originalValue = valuePath ? _.get(castMessage, valuePath.replace(/^\$\./, '')) : defaultValue;
-          valueDataTypeToUse = valuePath ? valueDataType : defaultValueDataType;
-          if (originalValue) {
-            value = originalValue;
-            valueDataTypeToUse = valuePath ? valueDataType : defaultValueDataType;
-          } else {
-            value = defaultValue;
-            valueDataTypeToUse = defaultValueDataType;
-          }
-        } else {
-          originalValue = castMessage;
-          if (originalValue) {
-            value = originalValue;
-            valueDataTypeToUse = valueDataType;
-          } else {
-            value = defaultValue;
-            valueDataTypeToUse = defaultValueDataType;
-          }
-        }
-
-        if (value) {
-          switch (valueDataTypeToUse) {
-            case 'null': {
-              value = null;
-              break;
-            }
-            case 'boolean': {
-              if (typeof value !== 'boolean') {
-                value = value === 'true';
-              }
-              break;
-            }
-            case 'number': {
-              if (typeof value !== 'number') {
-                value = Number.parseFloat(value ? value.replaceAll(/\D/g, '') : defaultValue);
-                value = Number.isNaN(value) ? Number.parseFloat(defaultValue) : value;
-                value = Number.isNaN(value) ? null : value;
-              }
-              break;
-            }
-            case 'string':
-            default: {
-              value = `${value}`.toLowerCase();
-            }
-          }
-        }
-
-        let action;
-        const actionPathToUse = originalValue == null ? actionPathIfNoValue : actionPath;
-        const defaultActionToUse = originalValue == null ? defaultActionIfNoValue : defaultAction;
-        let actionDataTypeToUse;
-        if (typeof castMessage === 'object') {
-          action = actionPathToUse ? _.get(castMessage, actionPathToUse.replace(/^\$\./, ''), defaultActionToUse) : defaultActionToUse;
-          actionDataTypeToUse = actionPathToUse ? actionDataType : defaultActionDataType;
-        } else {
-          action = castMessage || defaultActionToUse;
-          actionDataTypeToUse = castMessage ? actionDataType : defaultActionDataType;
-        }
-        actionDataTypeToUse = originalValue == null ? defaultActionDataTypeIfNoValue : actionDataTypeToUse;
-
-        if (action) {
-          switch (actionDataTypeToUse) {
-            case 'null': {
-              action = null;
-              break;
-            }
-            case 'boolean': {
-              if (typeof action !== 'boolean') {
-                action = action === 'true';
-              }
-              break;
-            }
-            case 'number': {
-              if (typeof action !== 'number') {
-                action = Number.parseFloat(action ? action.replaceAll(/\D/g, '') : defaultActionToUse);
-                action = Number.isNaN(action) ? Number.parseFloat(defaultActionToUse) : action;
-                action = Number.isNaN(action) ? 0 : action;
-              }
-              break;
-            }
-            case 'string':
-            default: {
-              action = `${action}`.toLowerCase();
-            }
-          }
-        }
-
-        return {
-          action,
-          value,
-        };
-      },
-    }]));
+      return {
+        topic: sourceDeviceTopic?.topic?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfg_id),
+        targetDevices,
+        messageValueExtractor: sourceDeviceTopic?.valueExtractor ?? (() => { }),
+        messageEventExtractor: sourceDeviceTopic?.eventExtractor ?? (() => { }),
+        event,
+        action,
+        value,
+        datatype,
+      };
+    }), 'topic');
 
     const smartHomeMQTTClient = new MQTTClient('token', '', '0', deviceLinks, {
       devName: 'Smart Home API',
