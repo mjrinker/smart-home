@@ -347,5 +347,23 @@ module.exports = () => {
     throw new Error(`Could not find model ${modelName}`);
   };
 
+  returnObj.getDevicesByModelId = async (model, modelId) => {
+    if (model === 'device') {
+      return [(await returnObj.findOne('Device', { id: modelId }))];
+    }
+
+    if (model === 'room') {
+      return returnObj.findAll('Device', { room_id: modelId });
+    }
+
+    if (model === 'group') {
+      const groupModels = await returnObj.findAll('GroupModel', { group_id: modelId });
+      const groupModelInstances = await fn.asyncArrayIterator(groupModels, 'flatMap', async ({ model: groupModel, model_id: groupModelId }) => returnObj.getDevicesByModelId(groupModel, groupModelId));
+      return groupModelInstances.flatMap((instances) => instances);
+    }
+
+    return [];
+  };
+
   return returnObj;
 };

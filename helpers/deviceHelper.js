@@ -457,12 +457,14 @@ exports.performDeviceAction = async (deviceData) => {
           break;
         }
 
-        case 'on': {
+        case 'on':
+        case 'on_preserve': {
           Device.turnOn().then((response) => actionCallback(response, action));
           break;
         }
 
-        case 'toggle': {
+        case 'toggle':
+        case 'toggle_preserve': {
           Device.toggle().then((response) => actionCallback(response, action));
           break;
         }
@@ -502,6 +504,21 @@ exports.performDeviceAction = async (deviceData) => {
               message: `Device ${Device.name} does not support action ${action}`,
             });
           }
+
+          break;
+        }
+
+        case 'dimmer': {
+          // if (Device instanceof Light || Device instanceof Bulb) {
+          Device.setDimmerLevel(value).then((response) => actionCallback(response, action));
+          // } else {
+          // errors.push({
+          // success: false,
+          // status: 400,
+          // error: 'ACTION_NOT_SUPPORTED',
+          // message: `Device ${Device.name} does not support action ${action}`,
+          // });
+          // }
 
           break;
         }
