@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class Room extends params.Model {}
+  class Room extends params.Model { }
   Room.init({
     name: {
       type: params.DataTypes.STRING,

@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class SceneAction extends params.Model {}
+  class SceneAction extends params.Model { }
   SceneAction.init({
     scene_id: {
       type: params.DataTypes.INTEGER.UNSIGNED,

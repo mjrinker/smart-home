@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class Group extends params.Model {}
+  class Group extends params.Model { }
   Group.init({
     name: {
       type: params.DataTypes.STRING,

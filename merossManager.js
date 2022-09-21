@@ -200,10 +200,10 @@ class MerossManager {
       }
 
       abilities = await this.executeCommand(device.uuid, 'GET', 'Appliance.System.Ability', {});
-    } catch (error) {}
+    } catch (error) { }
   }
 
-  async updateFromState(device) {}
+  async updateFromState(device) { }
 
   async executeCommand(destinationDeviceUUID, method, namespace, payload, timeout = 5) {
     if (this.mqttClient.isConnected()) {
@@ -273,7 +273,7 @@ class MerossManager {
   static lmap(itemState) {
     if ((typeof itemState === 'number')
       && (itemState === 0
-      || itemState === 1)) {
+        || itemState === 1)) {
       return itemState;
     }
     if (typeof itemState === typeof true) {

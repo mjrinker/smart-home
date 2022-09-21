@@ -80,7 +80,7 @@ exports.envLogger = (arg) => {
   if ((typeof arg === 'function' && arg(process.env.ENVIRONMENT)) || arg === process.env.ENVIRONMENT) {
     return Logger();
   }
-  const func = async () => {};
+  const func = async () => { };
   return {
     debug: func,
     error: func,

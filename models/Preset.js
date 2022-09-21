@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class Preset extends params.Model {}
+  class Preset extends params.Model { }
   Preset.init({
     model: {
       type: params.DataTypes.ENUM('device', 'room', 'group'),

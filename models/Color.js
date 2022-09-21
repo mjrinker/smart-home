@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class Color extends params.Model {}
+  class Color extends params.Model { }
   Color.init({
     name: {
       type: params.DataTypes.STRING,

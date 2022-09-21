@@ -147,7 +147,7 @@ class CloudTuya {
   static lmap(itemState) {
     if ((typeof itemState === 'number')
       && (itemState === 0
-      || itemState === 1)) {
+        || itemState === 1)) {
       return itemState;
     }
     if (typeof itemState === typeof true) {

@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class GroupModel extends params.Model {}
+  class GroupModel extends params.Model { }
   GroupModel.init({
     group_id: {
       type: params.DataTypes.INTEGER.UNSIGNED,

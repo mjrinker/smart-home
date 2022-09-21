@@ -490,7 +490,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'brightness':
-          // falls through
+        // falls through
         case 'luminance': {
           if (Device instanceof Light || Device instanceof Bulb) {
             Device.setBrightness(value).then((response) => actionCallback(response, action));
@@ -586,7 +586,7 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'fade_brightness':
-          // falls through
+        // falls through
         case 'fade_luminance': {
           if (Device instanceof Light || Device instanceof Bulb) {
             (async () => {

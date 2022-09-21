@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class ConditionalAction extends params.Model {}
+  class ConditionalAction extends params.Model { }
   ConditionalAction.init({
     model: {
       type: params.DataTypes.ENUM('device', 'room', 'group'),

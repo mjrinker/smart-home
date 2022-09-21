@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class Device extends params.Model {}
+  class Device extends params.Model { }
   Device.init({
     mfg_id: {
       type: params.DataTypes.STRING(64),

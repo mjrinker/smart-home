@@ -14,31 +14,52 @@
     },
     "plugins": [],
     "rules": {
-        "brace-style": ["error", "1tbs"],
-        "curly": ["error", "all"],
-        "func-names": ["error", "never"],
+        "brace-style": [
+            "error",
+            "1tbs"
+        ],
+        "curly": [
+            "error",
+            "all"
+        ],
+        "func-names": [
+            "error",
+            "never"
+        ],
         "import/no-extraneous-dependencies": [
-            "error", {
+            "error",
+            {
                 "devDependencies": true,
                 "optionalDependencies": false,
                 "peerDependencies": false
             }
         ],
         "max-len": [
-          "error", {
-            "code": 120,
-            "ignoreComments": true,
-            "ignoreTrailingComments": true,
-            "ignoreUrls": true,
-            "ignoreStrings": true,
-            "ignoreTemplateLiterals": true,
-            "ignoreRegExpLiterals": true
-          }
+            "error",
+            {
+                "code": 120,
+                "ignoreComments": true,
+                "ignoreTrailingComments": true,
+                "ignoreUrls": true,
+                "ignoreStrings": true,
+                "ignoreTemplateLiterals": true,
+                "ignoreRegExpLiterals": true
+            }
         ],
         "no-await-in-loop": "off",
         "no-console": "off",
-        "no-fallthrough": ["error", { "commentPattern": "falls?\\s*through" }],
-        "no-plusplus": ["error", { "allowForLoopAfterthoughts": true }],
+        "no-fallthrough": [
+            "error",
+            {
+                "commentPattern": "falls?\\s*through"
+            }
+        ],
+        "no-plusplus": [
+            "error",
+            {
+                "allowForLoopAfterthoughts": true
+            }
+        ],
         "no-shadow": "off",
         "no-underscore-dangle": "off"
     }

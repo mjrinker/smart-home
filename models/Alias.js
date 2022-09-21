@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class Alias extends params.Model {}
+  class Alias extends params.Model { }
   Alias.init({
     model: {
       type: params.DataTypes.ENUM('device', 'room', 'group'),

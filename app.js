@@ -149,7 +149,8 @@ try {
     const sequelize = new Sequelize(
       process.env.DB_NAME,
       process.env.DB_USERNAME,
-      process.env.DB_PASSWORD, {
+      process.env.DB_PASSWORD,
+      {
         host: process.env.DB_HOSTNAME,
         dialect: process.env.DB_DIALECT,
         port: process.env.DB_PORT,
@@ -280,7 +281,7 @@ try {
     global.merossAPI = new MerossCloud({
       email: process.env.MEROSS_USERNAME,
       password: process.env.MEROSS_PASSWORD,
-      logger: () => {},
+      logger: () => { },
     });
 
     // initialize tuya connection
@@ -543,7 +544,7 @@ try {
     fs.readdir(routesDir, (err, files) => {
       files.forEach((file) => {
         if (!ignoreRoutes[file.replace(/\.js$/, '')]) {
-        // eslint-disable-next-line import/no-dynamic-require, global-require
+          // eslint-disable-next-line import/no-dynamic-require, global-require
           require(path.join(routesDir, file));
         }
       });

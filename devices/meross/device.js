@@ -116,9 +116,9 @@ class MerossDevice {
 
   async toggle() {
     if (this.state) {
-      return this.turnOff().catch(() => {});
+      return this.turnOff().catch(() => { });
     }
-    return this.turnOn().catch(() => {});
+    return this.turnOn().catch(() => { });
   }
 
   async isOnline() {
@@ -163,7 +163,7 @@ class MerossDevice {
   }
 
   async supportsLightControl() {
-    return this.supportsFeature('Appliance.Control.Light').catch(() => {});
+    return this.supportsFeature('Appliance.Control.Light').catch(() => { });
   }
 }
 

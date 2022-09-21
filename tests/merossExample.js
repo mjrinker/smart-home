@@ -4,7 +4,7 @@ const options = {
   email: 'mjrinker@gmail.com',
   password: '0463NSi$5m559196z0h4qD@1VdzjEni%',
   // logger: console.log,
-  logger: () => {},
+  logger: () => { },
 };
 
 const meross = new MerossCloud(options);

@@ -134,11 +134,11 @@ class Bulb extends MerossDevice {
   }
 
   async setBrightness(value) {
-    return this.setLightValues({ brightness: value }).catch(() => {});
+    return this.setLightValues({ brightness: value }).catch(() => { });
   }
 
   async supportsColor() {
-    return this.supportsFeature('Appliance.Control.Light', ({ capacity }) => [1, 5, 7].includes(capacity)).catch(() => {});
+    return this.supportsFeature('Appliance.Control.Light', ({ capacity }) => [1, 5, 7].includes(capacity)).catch(() => { });
   }
 
   async getColor() {
@@ -151,11 +151,11 @@ class Bulb extends MerossDevice {
   }
 
   async setColor(value) {
-    return this.setLightValues({ color: value }).catch(() => {});
+    return this.setLightValues({ color: value }).catch(() => { });
   }
 
   async supportsColorTemperature() {
-    return this.supportsFeature('Appliance.Control.Light', ({ capacity }) => [2, 6, 7].includes(capacity)).catch(() => {});
+    return this.supportsFeature('Appliance.Control.Light', ({ capacity }) => [2, 6, 7].includes(capacity)).catch(() => { });
   }
 
   async getColorTemperature() {
@@ -168,7 +168,7 @@ class Bulb extends MerossDevice {
   }
 
   async setColorTemperature(value) {
-    return this.setLightValues({ temperature: value }).catch(() => {});
+    return this.setLightValues({ temperature: value }).catch(() => { });
   }
 }
 

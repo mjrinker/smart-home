@@ -61,7 +61,7 @@ module.exports = () => {
       }
 
       case 'string':
-        // falls through
+      // falls through
       default: {
         return `${value}`;
       }

@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class Scene extends params.Model {}
+  class Scene extends params.Model { }
   Scene.init({
     name: {
       type: params.DataTypes.STRING,

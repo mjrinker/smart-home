@@ -1,5 +1,5 @@
 module.exports = (params) => {
-  class PresetAction extends params.Model {}
+  class PresetAction extends params.Model { }
   PresetAction.init({
     preset_id: {
       type: params.DataTypes.INTEGER.UNSIGNED,
