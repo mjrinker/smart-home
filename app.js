@@ -507,12 +507,10 @@ try {
         }),
       };
 
-      if (savedDevice.name.startsWith('hall')) {
-        device.connect(() => {
-          global.Devices[deviceDef.uuid].Device.isOn();
-          global.Devices[deviceDef.uuid].Device.getLightValues?.();
-        });
-      }
+      device.connect(() => {
+        global.Devices[deviceDef.uuid].Device.isOn();
+        global.Devices[deviceDef.uuid].Device.getLightValues?.();
+      });
     });
 
     const tasmotaDevices = await dataFn.findAll('Device', { platform: 'tasmota' });
