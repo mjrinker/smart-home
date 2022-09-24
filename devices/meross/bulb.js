@@ -110,11 +110,12 @@ class Bulb extends MerossDevice {
   async getLightValues() {
     try {
       const response = await this.getSystemAllData();
-      return {
+      this.lightValues = {
         brightness: response?.all?.digest?.light?.luminance || null,
         color_temp: response?.all?.digest?.light?.temperature || null,
         color: retrieveColor(response),
       };
+      return this.lightValues;
     } catch (error) {
       return false;
     }

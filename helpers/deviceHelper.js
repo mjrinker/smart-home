@@ -268,46 +268,6 @@ exports.combineLightValueActions = (actions, Device) => {
   return newActions;
 };
 
-// exports.getAliasIds = (nickname, parentPath = '') => {
-//   if (parentPath.split('.').includes(nickname)) {
-//     const error = new Error('Circular device aliases');
-//     error.name = 'CIRCULAR_ALIAS';
-//     throw error;
-//   }
-//
-//   const parentPathCopy = `${parentPath}.${nickname}`;
-//   const subDeviceInfo = deviceConfig[fn.slugify(nickname)] || {};
-//   return exports.getDeviceIdInfo(subDeviceInfo, parentPathCopy) || [];
-// };
-//
-// exports.getDeviceIdInfo = (deviceInfo, parentPath = '') => {
-//   if (_.isPlainObject(deviceInfo)) {
-//     if (deviceInfo.mfg_id) {
-//       if (Array.isArray(deviceInfo.mfg_id)) {
-//         return deviceInfo.mfg_id.map((deviceId) => ({
-//           ...deviceInfo,
-//           id: deviceId,
-//         }));
-//       }
-//
-//       return [{
-//         ...deviceInfo,
-//         mfg_id: deviceInfo.mfg_id,
-//       }];
-//     }
-//   }
-//
-//   if (Array.isArray(deviceInfo)) {
-//     return deviceInfo.flatMap((nickname) => exports.getAliasIds(nickname, parentPath));
-//   }
-//
-//   if (typeof deviceInfo === 'string') {
-//     return exports.getAliasIds(deviceInfo, parentPath);
-//   }
-//
-//   return [];
-// };
-
 exports.getDevices = async () => [
   ...(await exports.getTuyaDevices() || []), ...(await exports.getMerossDevices() || []),
 ];
@@ -1183,6 +1143,20 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
         ...devices,
       ], 'mfg_id');
     }
+  });
+
+  groupModelsForDevice?.forEach((groupModel) => {
+    devicesByGroupId[groupModel.group_id] = _.uniqBy([
+      ...devicesByGroupId[groupModel.group_id] || [],
+      ...[devicesById[groupModel.model_id]],
+    ].filter((device) => device), 'mfg_id');
+  });
+
+  groupRooms?.forEach((groupModel) => {
+    devicesByGroupId[groupModel.group_id] = _.uniqBy([
+      ...devicesByGroupId[groupModel.group_id] || [],
+      ...[devicesByRoomId[groupModel.model_id]],
+    ].filter((device) => device), 'mfg_id');
   });
 
   return {
