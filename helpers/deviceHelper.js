@@ -8,6 +8,7 @@ const {
   dataFn,
   delay,
   Devices,
+  Dimmer,
   fn,
   Light,
   logger,
@@ -293,12 +294,19 @@ exports.getTimeBasedActions = async ({ conditionalActions, deviceAction, deviceD
         async ([action, value]) => {
           let actionSlug = fn.slugify(action);
           let valueCopy = value;
-          if ((conditionalActions.time[actionSlug] || (actionSlug === 'toggle' && conditionalActions.time.on))) {
+          if ((conditionalActions.time[actionSlug]
+            || (['toggle', 'on_if_off'].includes(actionSlug) && conditionalActions.time.on)
+            || (['toggle', 'off_if_on'].includes(actionSlug) && conditionalActions.time.off))) {
             let timeAction = actionSlug;
-            if (actionSlug === 'toggle') {
-              const isOn = exports.isOn(deviceData);
+            if (['toggle', 'on_if_off'].includes(actionSlug)) {
+              const isOn = await deviceData.Device.isOn();
               if (!isOn) {
                 timeAction = 'on';
+              }
+            } else if (['toggle', 'off_if_on'].includes(actionSlug)) {
+              const isOn = await deviceData.Device.isOn();
+              if (isOn) {
+                timeAction = 'off';
               }
             }
 
@@ -417,9 +425,27 @@ exports.performDeviceAction = async (deviceData) => {
           break;
         }
 
+        case 'off_if_on': {
+          Device.isOn().then((isOn) => {
+            if (isOn) {
+              Device.turnOff().then((response) => actionCallback(response, action));
+            }
+          });
+          break;
+        }
+
         case 'on':
         case 'on_preserve': {
           Device.turnOn().then((response) => actionCallback(response, action));
+          break;
+        }
+
+        case 'on_if_off': {
+          Device.isOn().then((isOn) => {
+            if (!isOn) {
+              Device.turnOn().then((response) => actionCallback(response, action));
+            }
+          });
           break;
         }
 
@@ -469,16 +495,16 @@ exports.performDeviceAction = async (deviceData) => {
         }
 
         case 'dimmer': {
-          // if (Device instanceof Light || Device instanceof Bulb) {
-          Device.setDimmerLevel(value).then((response) => actionCallback(response, action));
-          // } else {
-          // errors.push({
-          // success: false,
-          // status: 400,
-          // error: 'ACTION_NOT_SUPPORTED',
-          // message: `Device ${Device.name} does not support action ${action}`,
-          // });
-          // }
+          if (Device instanceof Dimmer) {
+            Device.setDimmerLevel(value).then((response) => actionCallback(response, action));
+          } else {
+            errors.push({
+              success: false,
+              status: 400,
+              error: 'ACTION_NOT_SUPPORTED',
+              message: `Device ${Device.name} does not support action ${action}`,
+            });
+          }
 
           break;
         }
@@ -915,7 +941,6 @@ exports.performDeviceActions = async (deviceActions) => {
 
       if (errors.length > 0) {
         if (errors.length === 1) {
-          console.error(errors);
           return {
             code: 1,
             ...errors[0],

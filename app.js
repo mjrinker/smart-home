@@ -305,6 +305,7 @@ try {
       CloudTuya,
       DataTypes,
       delay,
+      Dimmer,
       express,
       Fan,
       fetch,
@@ -535,7 +536,7 @@ try {
         channels: [0],
       };
 
-      const client = new TasmotaDeviceClient(savedDevice.name, 'princetonreverb', {
+      const client = new TasmotaDeviceClient(savedDevice.name, process.env.TASMOTA_PASSWORD, {
         devName: savedDevice.name,
         id: savedDevice.mfg_id,
       }, logger);
@@ -594,6 +595,7 @@ try {
       switch (event) {
         case 'on':
         case 'off':
+        case 'toggle':
         case 'power': {
           sourceDeviceTopic = TopicProvider.getPowerTopic();
           break;

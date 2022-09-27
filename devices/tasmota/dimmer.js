@@ -3,7 +3,10 @@ const TasmotaDevice = require('./device');
 class Dimmer extends TasmotaDevice {
   async setDimmerLevel(level) {
     try {
-      await this.turnOn();
+      if (!this.state) {
+        await this.turnOn();
+      }
+
       const dimmerResponse = await this.client.setDimmerLevel(level);
       this.dimmer = dimmerResponse?.Dimmer || this.dimmer;
       return {
