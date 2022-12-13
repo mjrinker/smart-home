@@ -406,10 +406,10 @@ try {
     tuyaAPI.login().then(() => {
       logger.info('Successfully authenticated with CloudTuya');
       const fakeTuyaAPI = {
-        find: () => { },
+        find: () => ({ data: { online: false, state: false } }),
         post: () => { },
         setState: () => ({ header: { code: 'FAILURE' } }),
-        state: () => ({ online: true, state: false }),
+        state: () => ({ online: false, state: false }),
         updateStatesCache: () => { },
       };
 

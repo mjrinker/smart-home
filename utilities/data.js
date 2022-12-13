@@ -101,13 +101,17 @@ module.exports = () => {
 
       throw new Error(`Could not find model ${modelName}`);
     } else if (models[modelName]) {
-      return models[modelName].findOne({
+      const instance = await models[modelName].findOne({
         where: {
           ...convertFilterToSequelizeWhere(filter),
           active: true,
         },
         raw: true,
       });
+      return {
+        ...instance,
+        ...(instance.active === undefined ? {} : { active: !!instance.active }),
+      };
     }
 
     throw new Error(`Could not find model ${modelName}`);
@@ -155,7 +159,7 @@ module.exports = () => {
 
       throw new Error(`Could not find model ${modelName}`);
     } else if (models[modelName]) {
-      return models[modelName].findAll({
+      return (await models[modelName].findAll({
         where: {
           ...convertFilterToSequelizeWhere(filter),
           active: true,
@@ -167,7 +171,10 @@ module.exports = () => {
           ...rawAttributes.includes('id') ? [['id']] : [],
         ],
         raw: true,
-      });
+      })).map((instance) => ({
+        ...instance,
+        ...(instance.active === undefined ? {} : { active: !!instance.active }),
+      }));
     }
 
     throw new Error(`Could not find model ${modelName}`);

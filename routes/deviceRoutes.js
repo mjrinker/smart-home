@@ -15,6 +15,15 @@ const routeList = [
     ],
   },
   {
+    path: '/:deviceId',
+    method: 'get',
+    controller: 'deviceController',
+    auth: false, // TODO set this to true
+    versions: [
+      { versions: '>=4.0.0', func: controller.getDevice },
+    ],
+  },
+  {
     path: '/action',
     method: 'post',
     controller: 'deviceController',

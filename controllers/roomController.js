@@ -6,6 +6,7 @@ const roomHelper = require('../helpers/roomHelper');
 const {
   _,
   dataFn,
+  Devices,
   fn,
   models,
   sequelize,
@@ -174,16 +175,36 @@ exports.getRoom = fn.asyncMw(async (req, res) => {
     });
   }
 
+  const devices = await fn.asyncArrayIterator(await dataFn.findAll('Device', { room_id: Number(roomId) }), 'map', async (device) => ({
+    ...device,
+    ...(await Devices[device.mfg_id]?.Device?.getState() || {}),
+    actions: constants.deviceActions[device.type] || constants.deviceActions.generic,
+  }));
+
+  const roomState = devices.reduce((accumlator, device) => ({
+    online: accumlator[device.room_id]?.online || device.online,
+    state: accumlator[device.room_id]?.state || device.state,
+  }), {});
+
   return fn.sendResponse(req, res, 200, {
     success: true,
     status: 200,
     code: 0,
-    room,
+    room: {
+      ...room,
+      ...roomState,
+      actions: constants.roomActions,
+      devices,
+    },
   });
 });
 
 exports.getRooms = fn.asyncMw(async (req, res) => {
-  const devices = await dataFn.findAll('Device');
+  const devices = await fn.asyncArrayIterator(await dataFn.findAll('Device'), 'map', async (device) => ({
+    ...device,
+    ...(await Devices[device.mfg_id]?.Device?.getState() || {}),
+    actions: constants.deviceActions[device.type] || constants.deviceActions.generic,
+  }));
   const devicesByRoomId = _.groupBy(devices, 'room_id');
   const deviceNames = devices.map((device) => device.name);
   const deviceStates = await deviceHelper.getDeviceStates(deviceNames);
@@ -208,6 +229,7 @@ exports.getRooms = fn.asyncMw(async (req, res) => {
     code: 0,
     rooms: (await dataFn.findAll('Room')).map((room) => ({
       ...room,
+      ...(roomStates[room.id] || {}),
       actions: constants.roomActions,
       devices: devicesByRoomId[room.id] || [],
     })),
