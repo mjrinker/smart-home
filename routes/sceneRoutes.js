@@ -1,9 +1,6 @@
 const controller = require('../controllers/sceneController');
 
-/* eslint-disable camelcase */
-const prefixV1_0_0 = '/scene';
 const prefix = '/scenes';
-/* eslint-enable camelcase */
 
 const {
   fn,
@@ -12,22 +9,13 @@ const {
 
 const routeList = [
   {
-    prefix: prefixV1_0_0,
-    path: '/:sceneName',
+    path: '/:sceneNameOrId', // TODO change this to sceneId when <4.0.0 is removed completely
     method: 'post',
     controller: 'sceneController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['1.0.0'], func: controller.playScene },
-    ],
-  },
-  {
-    path: '/:sceneName',
-    method: 'post',
-    controller: 'sceneController',
-    auth: false, // TODO set this to true
-    versions: [
-      { versions, func: controller.playScene },
+      { versions: '<4.0.0', func: controller.playSceneV2_0_0__V3_0_0 },
+      { versions: '>=4.0.0', func: controller.playScene },
     ],
   },
   {
@@ -36,7 +24,8 @@ const routeList = [
     controller: 'sceneController',
     auth: false, // TODO set this to true
     versions: [
-      { versions, func: controller.startSequence },
+      { versions: '<4.0.0', func: controller.startSequenceV2_0_0__V3_0_0 },
+      { versions: '>=4.0.0', func: controller.startSequence },
     ],
   },
   {

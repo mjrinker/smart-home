@@ -21,7 +21,7 @@ const triggerRegexesCallbacks = {
           }))
             .filter((action) => !Number.isNaN(action.value)),
         }))),
-    performAction: deviceHelper.performDeviceActions,
+    performAction: deviceHelper.performDeviceActionsByNickname,
   },
   [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<actionA>color|brightness) )?to (?<valueA>.+?)( and (?:the )?(?:(?<actionB>color|brightness) )?to (?<valueB>.+))?$/i]: {
     callback: (match) => (
@@ -37,7 +37,7 @@ const triggerRegexesCallbacks = {
             };
           }).filter((action) => !Number.isNaN(action.value)),
         }))),
-    performAction: deviceHelper.performDeviceActions,
+    performAction: deviceHelper.performDeviceActionsByNickname,
   },
   [/^Turn (?:the )?(?<nickname1>.*?) (?:lights? )?(?:and (?:the )?(?<nickname2>.*?) (?:lights? )?)?(?:(?<action>(?:color )?temp(?:erature)?|brightness) )?(?<value>up|down)$/i]: {
     callback: (match) => (
@@ -50,7 +50,7 @@ const triggerRegexesCallbacks = {
             value: match.groups.value === 'up' ? '+25' : '-25',
           }],
         }))),
-    performAction: deviceHelper.performDeviceActions,
+    performAction: deviceHelper.performDeviceActionsByNickname,
   },
   [/^Turn (?:(?<actionA>on|off) )?all(?: (?:the )?lights)?(?: (?<actionB>on|off))?$/i]: {
     callback: (match) => [{
@@ -60,7 +60,7 @@ const triggerRegexesCallbacks = {
         value: true,
       }],
     }],
-    performAction: deviceHelper.performDeviceActions,
+    performAction: deviceHelper.performDeviceActionsByNickname,
   },
   [/^Turn (?:(?<actionA>on|off) )?(?:the )?(?<nickname1>.*?) ?(?:lights?)?(?: and (?:the )?(?<nickname2>.*?) ?(?:lights?)?)?(?: (?<actionB>on|off))?$/i]: {
     callback: (match) => (
@@ -73,7 +73,7 @@ const triggerRegexesCallbacks = {
             value: true,
           }],
         }))),
-    performAction: deviceHelper.performDeviceActions,
+    performAction: deviceHelper.performDeviceActionsByNickname,
   },
 };
 

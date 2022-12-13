@@ -89,10 +89,7 @@ exports.createRoom = fn.asyncMw(async (req, res) => {
     roomCopy = {
       ...JSON.parse(JSON.stringify(room)),
       actions: constants.roomActions,
-      devices: await fn.asyncArrayIterator(deviceIds, Array.map, async (deviceId) => {
-        const device = await dataFn.findOne('Device', { id: deviceId });
-        return fn.filterObjectProperties(device, constants.deviceProps);
-      }),
+      devices: await fn.asyncArrayIterator(deviceIds, Array.map, async (deviceId) => dataFn.findOne('Device', { id: deviceId })),
     };
   } catch (error) {
     await transaction.rollback();
@@ -209,7 +206,11 @@ exports.getRooms = fn.asyncMw(async (req, res) => {
     success: true,
     status: 200,
     code: 0,
-    rooms,
+    rooms: (await dataFn.findAll('Room')).map((room) => ({
+      ...room,
+      actions: constants.roomActions,
+      devices: devicesByRoomId[room.id] || [],
+    })),
   });
 });
 
@@ -345,7 +346,7 @@ exports.updateRoom = fn.asyncMw(async (req, res) => {
  *
  * @deprecated as of version v3.0.0
  * @version v2.0.0
- * @version v2.1.0,
+ * @version v2.1.0
  * @version v2.1.1
  */
 exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => fn.sendResponse(req, res, 200, {
@@ -354,12 +355,3 @@ exports.getRoomsV2_0_0__V2_1_1 = fn.asyncMw(async (req, res) => fn.sendResponse(
   code: 0,
   rooms: (await dataFn.findAll('Room')).map((room) => roomHelper.transformRoomV2_0_0__V2_1_1({ ...room, actions: constants.roomActions })),
 }));
-
-/**
- *
- * @deprecated as of version v2.0.0
- * @version v1.0.0
- */
-exports.getRoomsV1_0_0 = fn.asyncMw(async (req, res) => (
-  fn.sendResponse(req, res, 200, (await dataFn.findAll('Room')).map((room) => roomHelper.transformRoomV1_0_0({ ...room, actions: constants.roomActions })))
-));

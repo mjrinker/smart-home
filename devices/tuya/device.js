@@ -76,7 +76,7 @@ class TuyaDevice {
       devId: this.deviceId,
     });
 
-    return state && state[0] && state[0].data;
+    return state?.[0]?.data;
   }
 
   async supportsFeature(feature) {

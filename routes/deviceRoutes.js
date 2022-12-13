@@ -1,24 +1,17 @@
 const controller = require('../controllers/deviceController');
 
-/* eslint-disable camelcase */
-const prefixV1_0_0 = '/device';
 const prefix = '/devices';
-/* eslint-enable camelcase */
 
-const {
-  fn,
-  versions,
-} = global;
+const { fn } = global;
 
 const routeList = [
   {
-    prefix: prefixV1_0_0,
-    path: '/action',
-    method: 'post',
+    path: '/',
+    method: 'get',
     controller: 'deviceController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['1.0.0'], func: controller.performActions },
+      { versions: '>=4.0.0', func: controller.getDevices },
     ],
   },
   {
@@ -27,7 +20,8 @@ const routeList = [
     controller: 'deviceController',
     auth: false, // TODO set this to true
     versions: [
-      { versions, func: controller.performActions },
+      { versions: '<4.0.0', func: controller.performActionsV2_0_0__V3_0_0 },
+      { versions: '>=4.0.0', func: controller.performActions },
     ],
   },
   {
@@ -36,7 +30,7 @@ const routeList = [
     controller: 'deviceController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['2.1.0', '2.1.1', '3.0.0'], func: controller.getDeviceState },
+      { versions: '<=2.1.0', func: controller.getDeviceState },
     ],
   },
 ];

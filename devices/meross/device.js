@@ -133,7 +133,9 @@ class MerossDevice {
 
   async isOn() {
     try {
+      global.fn.pauseDeviceLinks(this.deviceId);
       const response = await this.getSystemAllData();
+      global.fn.resumeDeviceLinks(this.deviceId);
       this.state = !!response?.all?.digest?.togglex[0]?.onoff;
       return this.state;
     } catch (error) {

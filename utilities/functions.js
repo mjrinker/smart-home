@@ -19,6 +19,7 @@ module.exports = () => {
     getSunrise,
     getSunset,
     logger,
+    removedVersions,
     tab,
     versions,
   } = global;
@@ -154,6 +155,21 @@ module.exports = () => {
     }).filter((amount) => amount).reduce((a, b) => a + b, 0);
   };
 
+  fn.getResponseStatusAnsiColor = (status) => {
+    if (status < 300) {
+      return bgBrightGreen(brightBlack(` ${status} `));
+    }
+    if (status < 400) {
+      return bgBrightCyan(brightBlack(` ${status} `));
+    }
+    if (status < 500) {
+      return bgYellow(white(` ${status} `));
+    }
+    return bgRed(brightWhite(` ${status} `));
+  };
+
+  fn.isDeviceLinkPaused = (mfgId) => !!global.pausedDeviceLinks[mfgId];
+
   fn.isInTimeRange = (startTime, endTime, overrideDate = new Date()) => {
     const now = new Date(overrideDate);
     const today = new Date(now);
@@ -225,6 +241,16 @@ module.exports = () => {
     return now >= start && now < end;
   };
 
+  fn.merge = (...objects) => {
+    const merged = {};
+    objects.forEach((obj) => {
+      Object.entries(obj).forEach(([key, value]) => {
+        merged[key] = [...(merged[key] || []), ...value];
+      });
+    });
+    return merged;
+  };
+
   fn.parseTime = (timeString, suntimeDay = new Date()) => {
     const today = new Date();
     let date = new Date(today);
@@ -275,21 +301,71 @@ module.exports = () => {
     return date;
   };
 
+  fn.parseVersionExpression = (versionExpression) => {
+    const expressions = versionExpression.split(',');
+    return expressions.reduce((accumulator, expression) => {
+      if (expression.match(/^\d+\.\d+\.\d+$/)) {
+        return _.sortBy([...new Set([...accumulator, expression])]);
+      }
+
+      if (expression.startsWith('<')) {
+        const expressionVersion = expression.replaceAll(/[^\d.]/g, '');
+        const expressionVersionIndex = accumulator.indexOf(expressionVersion);
+        if (expressionVersionIndex === -1) {
+          return accumulator.filter((version) => {
+            const versionSubNumbers = version.split('.').map((number) => Number.parseInt(number, 10));
+            const expressionVersionSubNumbers = expressionVersion.split('.').map((number) => Number.parseInt(number, 10));
+            return (versionSubNumbers[0] < expressionVersionSubNumbers[0]
+              || (versionSubNumbers[0] === expressionVersionSubNumbers[0]
+                && versionSubNumbers[1] < expressionVersionSubNumbers[1])
+              || (versionSubNumbers[0] === expressionVersionSubNumbers[0]
+                && versionSubNumbers[1] === expressionVersionSubNumbers[1]
+                && versionSubNumbers[2] < expressionVersionSubNumbers[2])
+              || (expression.startsWith('<=') && version === expressionVersion));
+          });
+        }
+
+        const expressionVersionsMaxIndex = expression.startsWith('<=') ? expressionVersionIndex + 1 : expressionVersionIndex;
+        return accumulator.slice(0, expressionVersionsMaxIndex);
+      }
+
+      if (expression.startsWith('>')) {
+        const expressionVersion = expression.replaceAll(/[^\d.]/g, '');
+        const expressionVersionIndex = accumulator.indexOf(expressionVersion);
+        if (expressionVersionIndex === -1) {
+          return accumulator.filter((version) => {
+            const versionSubNumbers = version.split('.').map((number) => Number.parseInt(number, 10));
+            const expressionVersionSubNumbers = expressionVersion.split('.').map((number) => Number.parseInt(number, 10));
+            return (versionSubNumbers[0] > expressionVersionSubNumbers[0]
+              || (versionSubNumbers[0] === expressionVersionSubNumbers[0]
+                && versionSubNumbers[1] > expressionVersionSubNumbers[1])
+              || (versionSubNumbers[0] === expressionVersionSubNumbers[0]
+                && versionSubNumbers[1] === expressionVersionSubNumbers[1]
+                && versionSubNumbers[2] > expressionVersionSubNumbers[2])
+              || (expression.startsWith('>=') && version === expressionVersion));
+          });
+        }
+
+        const expressionVersionsMinIndex = expression.startsWith('>=') ? expressionVersionIndex : expressionVersionIndex + 1;
+        return accumulator.slice(expressionVersionsMinIndex);
+      }
+
+      return accumulator;
+    }, [...versions]);
+  };
+
   fn.pascalCase = (string) => (
     string.substring(0, 1).toUpperCase() + _.camelCase(string).substring(1)
   );
 
-  fn.getResponseStatusAnsiColor = (status) => {
-    if (status < 300) {
-      return bgBrightGreen(brightBlack(` ${status} `));
-    }
-    if (status < 400) {
-      return bgBrightCyan(brightBlack(` ${status} `));
-    }
-    if (status < 500) {
-      return bgYellow(white(` ${status} `));
-    }
-    return bgRed(brightWhite(` ${status} `));
+  fn.pauseDeviceLinks = (mfgId) => {
+    global.pausedDeviceLinks[mfgId] = true;
+  };
+
+  fn.resumeDeviceLinks = (mfgId) => {
+    delay(1000).then(() => {
+      delete global.pausedDeviceLinks[mfgId];
+    });
   };
 
   fn.sendResponse = (req, res, status = 200, body = null) => {
@@ -309,16 +385,22 @@ module.exports = () => {
       const path = (route.prefix || params.prefix) + route.path;
       const versionRoutesObj = {};
       route.versions.forEach((routeVersions, index) => {
+        let adjustedRouteVersions;
+        if (typeof routeVersions.versions === 'string') {
+          adjustedRouteVersions = fn.parseVersionExpression(routeVersions.versions);
+        } else {
+          adjustedRouteVersions = [...routeVersions.versions];
+        }
         if (index < route.versions.length - 1) {
           remainingVersions = remainingVersions.filter((version) => (
-            !routeVersions.versions.includes(version)
+            !adjustedRouteVersions.includes(version)
           ));
         } else {
           // eslint-disable-next-line no-param-reassign
-          routeVersions.versions = remainingVersions;
+          adjustedRouteVersions = remainingVersions;
         }
 
-        routeVersions.versions.forEach((versionNumber) => {
+        adjustedRouteVersions.forEach((versionNumber) => {
           if (routeVersions.func) {
             versionRoutesObj[versionNumber] = routeVersions.func;
           } else {
@@ -332,25 +414,32 @@ module.exports = () => {
       } else {
         app[route.method](path, fn.asyncMw((req, res, next) => {
           let versionSupported = true;
-          let version = req.header('X-ApiVersion') || versions[versions.length - 1];
+          const originalVersion = req.header('X-ApiVersion') || versions[versions.length - 1];
+          let version = originalVersion;
           if (!versionRoutesObj[version]) {
-            if (version.match(/\d+/) || version.match(/\d+\.\d+/)) {
+            if (originalVersion.match(/^\d+$/) || originalVersion.match(/^\d+\.\d+$/)) {
               version = _.reverse([...versions]).find((versionNumber) => (
-                versionNumber.substring(0, version.length) === version
+                versionNumber.substring(0, originalVersion.length) === originalVersion
               ));
 
               versionSupported = !!version;
+              if (!versionSupported) {
+                version = _.reverse([...removedVersions]).find((versionNumber) => (
+                  versionNumber.substring(0, originalVersion.length) === originalVersion
+                ));
+              }
             } else {
               versionSupported = false;
             }
           }
 
           if (!versionSupported) {
+            version = version || originalVersion;
             return fn.sendResponse(req, res, 400, {
               success: false,
               status: 400,
               error: 'VERSION_NOT_SUPPORTED_ERROR',
-              message: `Version not supported: ${version}`,
+              message: removedVersions.includes(version) ? `Version ${version} has been removed` : `Version not supported: ${version}`,
             });
           }
 

@@ -339,13 +339,15 @@ try {
       moment,
       Op,
       path,
+      pausedDeviceLinks: {},
+      removedVersions: _.sortBy(['1.0.0']),
       sequelize,
       sequences: {},
       tab,
       Thermostat,
       tuyaAPI,
       TuyaDevice,
-      versions: _.sortBy(['1.0.0', '2.0.0', '2.1.0', '2.1.1', '3.0.0']),
+      versions: _.sortBy(['2.0.0', '2.1.0', '2.1.1', '3.0.0', '4.0.0']),
     };
 
     Object.entries(globals).forEach(([key, value]) => {
@@ -403,6 +405,14 @@ try {
     const tuyaDevices = await dataFn.findAll('Device', { platform: 'tuya' });
     tuyaAPI.login().then(() => {
       logger.info('Successfully authenticated with CloudTuya');
+      const fakeTuyaAPI = {
+        find: () => { },
+        post: () => { },
+        setState: () => ({ header: { code: 'FAILURE' } }),
+        state: () => ({ online: true, state: false }),
+        updateStatesCache: () => { },
+      };
+
       tuyaAPI.find({}).then((devices) => {
         devices.forEach(({
           data: {
@@ -438,6 +448,21 @@ try {
             bindTime: 12,
             channels: [0],
           };
+
+          let shouldConnect = false;
+
+          if (argv.includeOnlyPattern) {
+            if (name.match(new RegExp(argv.includeOnlyPattern))) {
+              shouldConnect = true;
+            }
+          } else if (argv.excludePattern) {
+            if (!name.match(new RegExp(argv.excludePattern))) {
+              shouldConnect = true;
+            }
+          } else {
+            shouldConnect = true;
+          }
+
           if (global.deviceTypeClassMap.tuya.__ignore.includes(deviceDef.deviceType)) {
             logger.dev.warn(`Ignoring device class for Tuya ${deviceDef.deviceType} ${deviceDef.devName}`);
           } else {
@@ -446,7 +471,7 @@ try {
               global.Devices[deviceId] = {
                 deviceDef,
                 Device: new DeviceType({
-                  api: tuyaAPI,
+                  api: shouldConnect ? tuyaAPI : fakeTuyaAPI,
                   deviceId,
                   device: {
                     data: {
@@ -496,6 +521,7 @@ try {
     // connect to local meross devices
     merossLocalDevices.forEach((savedDevice) => {
       const deviceDef = {
+        id: savedDevice.id,
         uuid: savedDevice.mfg_id,
         onlineStatus: 1,
         devName: savedDevice.label,
@@ -573,6 +599,7 @@ try {
 
       const client = new TasmotaDeviceClient(savedDevice.name, process.env.TASMOTA_PASSWORD, {
         devName: savedDevice.name,
+        devLabel: savedDevice.label,
         id: savedDevice.mfg_id,
       }, logger);
 
@@ -671,7 +698,7 @@ try {
       }
 
       return {
-        topic: sourceDeviceTopic.topic?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfg_id),
+        topic: sourceDeviceTopic?.topic?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfg_id),
         sourceDevice,
         targetDevices,
         messageValueExtractor: sourceDeviceTopic?.valueExtractor ?? (() => { }),

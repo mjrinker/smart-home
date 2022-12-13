@@ -2,10 +2,7 @@ const controller = require('../controllers/roomController');
 
 const prefix = '/rooms';
 
-const {
-  fn,
-  versions,
-} = global;
+const { fn } = global;
 
 const routeList = [
   {
@@ -14,9 +11,8 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['1.0.0'], func: controller.getRoomsV1_0_0 },
-      { versions: ['2.0.0', '2.1.0', '2.1.1'], func: controller.getRoomsV2_0_0__V2_1_1 },
-      { versions, func: controller.getRooms },
+      { versions: '>=2.0.0,<=2.1.1', func: controller.getRoomsV2_0_0__V2_1_1 },
+      { versions: '>=3.0.0', func: controller.getRooms },
     ],
   },
   {
@@ -25,7 +21,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['3.0.0'], func: controller.getRoom },
+      { versions: '>=3.0.0', func: controller.getRoom },
     ],
   },
   {
@@ -34,7 +30,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['3.0.0'], func: controller.createRoom },
+      { versions: '>=3.0.0', func: controller.createRoom },
     ],
   },
   {
@@ -43,7 +39,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['3.0.0'], func: controller.updateRoom },
+      { versions: '>=3.0.0', func: controller.updateRoom },
     ],
   },
   {
@@ -52,7 +48,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['3.0.0'], func: controller.deleteRoom },
+      { versions: '>=3.0.0', func: controller.deleteRoom },
     ],
   },
   {
@@ -61,7 +57,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['3.0.0'], func: controller.addAlias },
+      { versions: '>=3.0.0', func: controller.addAlias },
     ],
   },
   {
@@ -70,7 +66,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['3.0.0'], func: controller.removeAlias },
+      { versions: '>=3.0.0', func: controller.removeAlias },
     ],
   },
   {
@@ -79,7 +75,7 @@ const routeList = [
     controller: 'roomController',
     auth: false, // TODO set this to true
     versions: [
-      { versions: ['3.0.0'], func: controller.reassignRoomDevices },
+      { versions: '>=3.0.0', func: controller.reassignRoomDevices },
     ],
   },
 ];
