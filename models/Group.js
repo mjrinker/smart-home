@@ -20,6 +20,7 @@ module.exports = (params) => {
   }, {
     sequelize: params.sequelize,
     modelName: 'group',
+    underscored: true,
     timestamps: false,
   });
 

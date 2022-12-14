@@ -1,7 +1,7 @@
 module.exports = (params) => {
   class GroupModel extends params.Model { }
   GroupModel.init({
-    group_id: {
+    groupId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
@@ -9,7 +9,7 @@ module.exports = (params) => {
       type: params.DataTypes.ENUM('device', 'room', 'group'),
       allowNull: false,
     },
-    model_id: {
+    modelId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
@@ -21,6 +21,7 @@ module.exports = (params) => {
     sequelize: params.sequelize,
     modelName: 'groups_models',
     freezeTableName: true,
+    underscored: true,
     timestamps: false,
   });
 

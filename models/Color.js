@@ -13,7 +13,7 @@ module.exports = (params) => {
       type: params.DataTypes.STRING(9),
       allowNull: false,
     },
-    display_value: {
+    displayValue: {
       type: params.DataTypes.STRING(9),
       allowNull: false,
     },
@@ -24,6 +24,7 @@ module.exports = (params) => {
   }, {
     sequelize: params.sequelize,
     modelName: 'color',
+    underscored: true,
     timestamps: false,
   });
 

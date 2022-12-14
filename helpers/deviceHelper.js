@@ -118,22 +118,22 @@ exports.getShortPresetActionsByDeviceId = async ({
   const allPresets = await dataFn.findAll('Preset', [
     ...(numericDeviceIds?.length ? [{
       model: 'device',
-      model_id: numericDeviceIds,
+      modelId: numericDeviceIds,
     }] : [{}]),
     ...(numericRoomIds?.length ? [{
       model: 'room',
-      model_id: numericRoomIds,
+      modelId: numericRoomIds,
     }] : [{}]),
     ...(numericGroupIds?.length ? [{
       model: 'group',
-      model_id: numericGroupIds,
+      modelId: numericGroupIds,
     }] : [{}]),
   ]);
 
-  const allPresetActions = await dataFn.findAll('PresetAction', { preset_id: allPresets.map((preset) => preset.id) });
+  const allPresetActions = await dataFn.findAll('PresetAction', { presetId: allPresets.map((preset) => preset.id) });
 
   const presetShortActionsByPresetId = Object.fromEntries(
-    Object.entries(_.groupBy(allPresetActions, 'preset_id')).map(([presetId, presetActions]) => [
+    Object.entries(_.groupBy(allPresetActions, 'presetId')).map(([presetId, presetActions]) => [
       presetId,
       Object.fromEntries(
         presetActions.map((presetAction) => (
@@ -146,9 +146,9 @@ exports.getShortPresetActionsByDeviceId = async ({
     ]),
   );
 
-  const presetsByDeviceId = _.groupBy(allPresets.filter((preset) => preset.model === 'device'), 'model_id');
-  const presetsByRoomId = _.groupBy(allPresets.filter((preset) => preset.model === 'room'), 'model_id');
-  const presetsByGroupId = _.groupBy(allPresets.filter((preset) => preset.model === 'group'), 'model_id');
+  const presetsByDeviceId = _.groupBy(allPresets.filter((preset) => preset.model === 'device'), 'modelId');
+  const presetsByRoomId = _.groupBy(allPresets.filter((preset) => preset.model === 'room'), 'modelId');
+  const presetsByGroupId = _.groupBy(allPresets.filter((preset) => preset.model === 'group'), 'modelId');
 
   Object.entries(deviceIdsByRoomId).forEach(([roomId, deviceIds]) => {
     deviceIds.forEach((deviceId) => {
@@ -191,35 +191,35 @@ exports.getConditionalActionsByDeviceId = async ({
   const conditionalActions = await dataFn.findAll('ConditionalAction', [
     ...(numericDeviceIds?.length ? [{
       model: 'device',
-      model_id: numericDeviceIds,
+      modelId: numericDeviceIds,
     }] : [{}]),
     ...(numericRoomIds?.length ? [{
       model: 'room',
-      model_id: numericRoomIds,
+      modelId: numericRoomIds,
     }] : [{}]),
     ...(numericGroupIds?.length ? [{
       model: 'group',
-      model_id: numericGroupIds,
+      modelId: numericGroupIds,
     }] : [{}]),
   ]);
 
-  const presets = await dataFn.findAll('Preset', { id: conditionalActions.map((conditionalAction) => conditionalAction.preset_id) });
+  const presets = await dataFn.findAll('Preset', { id: conditionalActions.map((conditionalAction) => conditionalAction.presetId) });
 
   const presetsById = _.keyBy(presets, 'id');
 
   const conditionalActionsByDeviceId = _.groupBy(
     conditionalActions.filter((conditionalAction) => conditionalAction.model === 'device'),
-    'model_id',
+    'modelId',
   );
 
   const conditionalActionsByRoomId = _.groupBy(
     conditionalActions.filter((conditionalAction) => conditionalAction.model === 'room'),
-    'model_id',
+    'modelId',
   );
 
   const conditionalActionsByGroupId = _.groupBy(
     conditionalActions.filter((conditionalAction) => conditionalAction.model === 'group'),
-    'model_id',
+    'modelId',
   );
 
   Object.entries(deviceIdsByRoomId).forEach(([roomId, deviceIds]) => {
@@ -242,13 +242,13 @@ exports.getConditionalActionsByDeviceId = async ({
 
   return Object.fromEntries(Object.entries(conditionalActionsByDeviceId).map(([deviceId, conditionalActions]) => ([
     deviceId,
-    Object.fromEntries(Object.entries(_.groupBy(conditionalActions, 'condition_type')).map(([conditionType, conditionalActions]) => ([
+    Object.fromEntries(Object.entries(_.groupBy(conditionalActions, 'conditionType')).map(([conditionType, conditionalActions]) => ([
       conditionType,
       Object.fromEntries(Object.entries(_.groupBy(conditionalActions, 'action')).map(([actionName, conditionalActions]) => ([
         actionName,
         Object.fromEntries(conditionalActions.map((conditionalAction) => ([
           conditionalAction.condition ?? 'default',
-          presetsById[conditionalAction.preset_id]?.name,
+          presetsById[conditionalAction.presetId]?.name,
         ]))),
       ]))),
     ]))),
@@ -331,7 +331,7 @@ exports.getMerossDevices = async () => Object.values(Devices).map(({ deviceDef }
   },
   name: deviceDef.name,
   icon: null,
-  id: deviceDef.mfg_id,
+  id: deviceDef.mfgId,
   dev_type: deviceDef.type,
   ha_type: deviceDef.type,
 }));
@@ -855,7 +855,7 @@ exports.performDeviceActions = async (actions) => {
       const roomIdsByDeviceType = Object.entries(roomActionsByDeviceType).map(([deviceType, roomActions]) => {
         const roomIds = roomActions.flatMap(({ id, ids }) => [...(ids || []), ...(id ? [id] : [])]);
         return {
-          ...(roomIds?.length && !(roomIds.length === 1 && roomIds[0] === '*') ? { room_id: roomIds } : {}),
+          ...(roomIds?.length && !(roomIds.length === 1 && roomIds[0] === '*') ? { roomId: roomIds } : {}),
           ...(deviceType !== '*' ? { type: deviceType } : {}),
         };
       });
@@ -890,7 +890,7 @@ exports.performDeviceActions = async (actions) => {
     const deviceIds = devices.map((device) => device.id);
     const deviceIdsByRoomId = Object.fromEntries(Object.entries(fn.merge(
       (devicesByModelId.room || {}),
-      _.groupBy(devices, 'room_id'),
+      _.groupBy(devices, 'roomId'),
     ))
       .map(([roomId, devices]) => [roomId, _.uniq(devices.map((device) => device.id))]));
     const roomIds = Object.keys(deviceIdsByRoomId).map((roomId) => Number.parseInt(roomId, 10));
@@ -928,13 +928,13 @@ exports.performDeviceActions = async (actions) => {
 
       totalDevices += 1;
 
-      const deviceInfo = Devices[device.mfg_id];
+      const deviceInfo = Devices[device.mfgId];
       if (!deviceInfo) {
         errors.push({
           success: false,
           status: 404,
           error: 'DEVICE_NOT_FOUND',
-          message: `Cannot find device id: ${device.id}, mfgId: ${device.mfg_id}`,
+          message: `Cannot find device id: ${device.id}, mfgId: ${device.mfgId}`,
         });
 
         deviceCounter += 1;
@@ -1130,7 +1130,7 @@ exports.performDeviceActionsByNickname = async (deviceActions) => {
       totalDevices += matchingDevices.length;
 
       await Promise.all(matchingDevices.map((device) => (async (device) => {
-        const deviceInfo = Devices[device.mfg_id];
+        const deviceInfo = Devices[device.mfgId];
         if (!deviceInfo) {
           errors.push({
             success: false,
@@ -1265,7 +1265,7 @@ exports.reassignDeviceRoom = async (deviceIds, roomId) => {
 
   try {
     await models.Device.update({
-      room_id: roomId,
+      roomId,
     }, {
       where: {
         id: deviceIds,
@@ -1282,7 +1282,7 @@ exports.reassignDeviceRoom = async (deviceIds, roomId) => {
 
 exports.getDevicesByIdAndType = async (deviceIdsByDeviceType) => _.keyBy(await dataFn.findAll('Device', deviceIdsByDeviceType), 'id');
 
-exports.getDevicesByRoomAndType = async (roomIdsByDeviceType) => _.groupBy(await dataFn.findAll('Device', roomIdsByDeviceType), 'room_id');
+exports.getDevicesByRoomAndType = async (roomIdsByDeviceType) => _.groupBy(await dataFn.findAll('Device', roomIdsByDeviceType), 'roomId');
 
 exports.getDevicesByGroup = async (groupIds) => {
   let originalGroups;
@@ -1293,31 +1293,31 @@ exports.getDevicesByGroup = async (groupIds) => {
   }
 
   const allGroups = await groupHelper.flattenGroups(originalGroups);
-  const groupModels = await dataFn.findAll('GroupModel', { group_id: allGroups.map((group) => group.id) });
+  const groupModels = await dataFn.findAll('GroupModel', { groupId: allGroups.map((group) => group.id) });
   const groupModelsByModel = _.groupBy(groupModels, 'model');
 
   const groupIdsByDevice = Object.fromEntries(groupModelsByModel.device?.map(({
-    group_id: groupId,
-    model_id: modelId,
+    groupId,
+    modelId,
   }) => [modelId, groupId]) || []);
   const groupIdsByRoom = Object.fromEntries(groupModelsByModel.room?.map(({
-    group_id: groupId,
-    model_id: modelId,
+    groupId,
+    modelId,
   }) => [modelId, groupId]) || []);
   const groupIdsBySubGroup = Object.fromEntries(groupModelsByModel.group?.map(({
-    group_id: groupId,
-    model_id: modelId,
+    groupId,
+    modelId,
   }) => [modelId, groupId]) || []);
 
   const devices = await dataFn.findAll('Device', [
     ...(groupModelsByModel.device?.length ? [{
       id: groupModelsByModel.device.map(({
-        model_id: modelId,
+        modelId,
       }) => modelId),
     }] : [{}]),
     ...(groupModelsByModel.room?.length ? [{
-      room_id: groupModelsByModel.room.map(({
-        model_id: modelId,
+      roomId: groupModelsByModel.room.map(({
+        modelId,
       }) => modelId),
     }] : [{}]),
   ]);
@@ -1337,7 +1337,7 @@ exports.getDevicesByGroup = async (groupIds) => {
       }
     }
 
-    const roomGroupId = groupIdsByRoom[device.room_id];
+    const roomGroupId = groupIdsByRoom[device.roomId];
     if (roomGroupId) {
       devicesByGroup[roomGroupId] = [...(devicesByGroup[roomGroupId] || []), device];
       subGroupId = roomGroupId;
@@ -1355,18 +1355,18 @@ exports.getGroupsForDevices = async (deviceIds) => {
   const devicesById = _.keyBy(await dataFn.findAll('Device', { id: deviceIds }), 'id');
   return Object.fromEntries(
     Object.entries(
-      _.groupBy(await dataFn.findAll('GroupModel', { model: 'device', model_id: deviceIds }), 'group_id'),
-    ).map(([groupId, groupModels]) => [groupId, groupModels.map(({ model_id: modelId }) => devicesById[modelId])]),
+      _.groupBy(await dataFn.findAll('GroupModel', { model: 'device', modelId: deviceIds }), 'groupId'),
+    ).map(([groupId, groupModels]) => [groupId, groupModels.map(({ modelId }) => devicesById[modelId])]),
   );
 };
 
 exports.getGroupsForDevicesFromRoomIds = async (roomIds) => {
-  const devicesByRoom = await exports.getDevicesByRoomAndType(roomIds.map((roomId) => ({ room_id: roomId })));
+  const devicesByRoom = await exports.getDevicesByRoomAndType(roomIds.map((roomId) => ({ roomId })));
   const deviceIds = Object.values(devicesByRoom).flatMap((devices) => devices.map((device) => device.id));
   const devicesByGroupId = await exports.getGroupsForDevices(deviceIds);
   const entriesOfRoomIdsByGroup = Object.entries(
-    _.groupBy(await dataFn.findAll('GroupModel', { model: 'room', model_id: roomIds }), 'group_id'),
-  ).map(([groupId, groupModels]) => [groupId, groupModels.map(({ model_id: modelId }) => modelId)]);
+    _.groupBy(await dataFn.findAll('GroupModel', { model: 'room', modelId: roomIds }), 'groupId'),
+  ).map(([groupId, groupModels]) => [groupId, groupModels.map(({ modelId }) => modelId)]);
   const devicesFromRoomIdsByGroupId = Object.fromEntries(
     entriesOfRoomIdsByGroup.map(([groupId, roomIds]) => (
       [groupId, roomIds.map((roomId) => devicesByRoom[roomId])]
@@ -1388,7 +1388,7 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
   const deviceAliases = aliases?.filter((alias) => alias.model === 'device') || [];
 
   const groups = await dataFn.findAll('Group', [{
-    id: groupAliases.map((alias) => alias.model_id),
+    id: groupAliases.map((alias) => alias.modelId),
   }, {
     name: deviceNames,
   }]);
@@ -1401,7 +1401,7 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
   if (groups?.length > 0) {
     allGroups = await groupHelper.flattenGroups(groups);
     // eslint-disable-next-line camelcase
-    const groupModels = await dataFn.findAll('GroupModel', { group_id: allGroups.map((group) => group.id) });
+    const groupModels = await dataFn.findAll('GroupModel', { groupId: allGroups.map((group) => group.id) });
 
     if (groupModels?.length > 0) {
       groupRooms.push(...groupModels.filter((groupModel) => groupModel.model === 'room'));
@@ -1412,8 +1412,8 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
 
   const rooms = await dataFn.findAll('Room', [{
     id: [
-      ...roomAliases?.map((alias) => alias.model_id) || [],
-      ...groupRooms?.map((groupRoom) => groupRoom.model_id) || [],
+      ...roomAliases?.map((alias) => alias.modelId) || [],
+      ...groupRooms?.map((groupRoom) => groupRoom.modelId) || [],
     ],
   }, {
     name: deviceNames,
@@ -1421,14 +1421,14 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
 
   const devices = await dataFn.findAll('Device', [{
     id: [
-      ...groupDevices?.map((groupDevice) => groupDevice.model_id) || [],
-      ...deviceAliases?.map((alias) => alias.model_id) || [],
+      ...groupDevices?.map((groupDevice) => groupDevice.modelId) || [],
+      ...deviceAliases?.map((alias) => alias.modelId) || [],
     ],
   }, {
-    room_id: rooms?.map((room) => room.id) || [],
+    roomId: rooms?.map((room) => room.id) || [],
     type: 'bulb',
   }, {
-    mfg_id: deviceNames,
+    mfgId: deviceNames,
   }, {
     name: deviceNames,
   }, {
@@ -1437,24 +1437,24 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
 
   const groupModelsForDevice = await dataFn.findAll('GroupModel', {
     model: 'device',
-    model_id: devices.map((device) => device.id),
+    modelId: devices.map((device) => device.id),
   });
 
   if (groupModelsForDevice.length > 0) {
     const groupsForDevice = await dataFn.findAll('Group', {
-      id: groupModelsForDevice.map((groupModel) => groupModel.group_id),
+      id: groupModelsForDevice.map((groupModel) => groupModel.groupId),
     });
 
     allGroups.push(...groupsForDevice);
   }
 
   const devicesById = _.keyBy(devices, 'id');
-  const devicesByRoomId = _.groupBy(devices, 'room_id');
+  const devicesByRoomId = _.groupBy(devices, 'roomId');
   const devicesByGroupId = {};
   const allGroupsById = _.keyBy(allGroups, 'id');
-  const groupDevicesByGroupId = _.groupBy(groupDevices, 'group_id');
-  const groupRoomsByGroupId = _.groupBy(groupRooms, 'group_id');
-  const groupGroupsByModelId = _.groupBy(groupGroups, 'model_id');
+  const groupDevicesByGroupId = _.groupBy(groupDevices, 'groupId');
+  const groupRoomsByGroupId = _.groupBy(groupRooms, 'groupId');
+  const groupGroupsByModelId = _.groupBy(groupGroups, 'modelId');
 
   devices?.forEach((device) => {
     devicesByNickname[device.name] = [device];
@@ -1466,95 +1466,95 @@ exports.getDevicesByModels = async (deviceNames, deviceTypes) => {
       devicesByNickname[room.name] = _.uniqBy([
         ...devicesByNickname[room.name] || [],
         ...devices,
-      ], 'mfg_id');
+      ], 'mfgId');
     }
   });
 
   allGroups?.forEach((group) => {
     const devices = groupDevicesByGroupId[group.id]
-      ?.map((groupDevice) => devicesById[groupDevice.model_id])
+      ?.map((groupDevice) => devicesById[groupDevice.modelId])
       ?.filter((device) => device) || [];
-    let parentGroup = allGroupsById[groupGroupsByModelId[group.id]?.group_id];
+    let parentGroup = allGroupsById[groupGroupsByModelId[group.id]?.groupId];
     while (parentGroup) {
       devicesByNickname[parentGroup.name] = _.uniqBy([
         ...devicesByNickname[parentGroup.name] || [],
         ...devices || [],
-      ], 'mfg_id');
+      ], 'mfgId');
 
       devicesByGroupId[parentGroup.id] = _.uniqBy([
         ...devicesByGroupId[parentGroup.id] || [],
         ...devices || [],
-      ], 'mfg_id');
+      ], 'mfgId');
 
-      parentGroup = allGroupsById[groupGroupsByModelId[parentGroup.id]?.group_id];
+      parentGroup = allGroupsById[groupGroupsByModelId[parentGroup.id]?.groupId];
     }
 
     if (devices?.length > 0) {
       devicesByNickname[group.name] = _.uniqBy([
         ...devicesByNickname[group.name] || [],
         ...devices,
-      ], 'mfg_id');
+      ], 'mfgId');
 
       devicesByGroupId[group.id] = _.uniqBy([
         ...devicesByGroupId[group.id] || [],
         ...devices,
-      ], 'mfg_id');
+      ], 'mfgId');
     }
 
     const groupRooms = groupRoomsByGroupId[group.id];
     groupRooms?.forEach((groupRoom) => {
-      const devices = devicesByRoomId[groupRoom.model_id];
+      const devices = devicesByRoomId[groupRoom.modelId];
       if (devices?.length > 0) {
         devicesByNickname[group.name] = _.uniqBy([
           ...devicesByNickname[group.name] || [],
           ...devices,
-        ], 'mfg_id');
+        ], 'mfgId');
       }
     });
   });
 
   deviceAliases?.forEach((deviceAlias) => {
-    const device = devicesById[deviceAlias.model_id];
+    const device = devicesById[deviceAlias.modelId];
     if (device) {
       devicesByNickname[deviceAlias.alias] = _.uniqBy([
         ...devicesByNickname[deviceAlias.alias] || [],
         device,
-      ], 'mfg_id');
+      ], 'mfgId');
     }
   });
 
   roomAliases?.forEach((roomAlias) => {
-    const devices = devicesByRoomId[roomAlias.model_id];
+    const devices = devicesByRoomId[roomAlias.modelId];
     if (devices?.length > 0) {
       devicesByNickname[roomAlias.alias] = _.uniqBy([
         ...devicesByNickname[roomAlias.alias] || [],
         ...devices,
-      ], 'mfg_id');
+      ], 'mfgId');
     }
   });
 
   groupAliases?.forEach((groupAlias) => {
-    const devices = devicesByGroupId[groupAlias.model_id];
+    const devices = devicesByGroupId[groupAlias.modelId];
     if (devices?.length > 0) {
       devicesByNickname[groupAlias.alias] = _.uniqBy([
         ...devicesByNickname[groupAlias.alias] || [],
         ...devices,
-      ], 'mfg_id');
+      ], 'mfgId');
     }
   });
 
   groupModelsForDevice?.forEach((groupModel) => {
-    devicesByGroupId[groupModel.group_id] = _.uniqBy([
-      ...devicesByGroupId[groupModel.group_id] || [],
-      ...[devicesById[groupModel.model_id]],
-    ].filter((device) => device), 'mfg_id');
+    devicesByGroupId[groupModel.groupId] = _.uniqBy([
+      ...devicesByGroupId[groupModel.groupId] || [],
+      ...[devicesById[groupModel.modelId]],
+    ].filter((device) => device), 'mfgId');
   });
 
   groupRooms?.forEach((groupModel) => {
-    devicesByGroupId[groupModel.group_id] = _.uniqBy([
-      ...devicesByGroupId[groupModel.group_id] || [],
-      ...[devicesByRoomId[groupModel.model_id]],
-    ].filter((device) => device), 'mfg_id');
+    devicesByGroupId[groupModel.groupId] = _.uniqBy([
+      ...devicesByGroupId[groupModel.groupId] || [],
+      ...[devicesByRoomId[groupModel.modelId]],
+    ].filter((device) => device), 'mfgId');
   });
 
   return {

@@ -94,14 +94,6 @@ exports.deviceActions = {
   ],
   garage: [
     {
-      action: 'off',
-      value: true,
-    },
-    {
-      action: 'on',
-      value: true,
-    },
-    {
       action: 'open',
       value: true,
     },

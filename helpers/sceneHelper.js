@@ -20,10 +20,10 @@ exports.runScene = async (sceneId) => {
     };
   }
 
-  const sceneActions = await dataFn.findAll('SceneAction', { scene_id: sceneId });
+  const sceneActions = await dataFn.findAll('SceneAction', { sceneId });
   const deviceActions = sceneActions.map((sceneAction) => ({
     model: sceneAction.model,
-    id: sceneAction.model_id,
+    id: sceneAction.modelId,
     actions: [{
       action: sceneAction.action,
       value: fn.castActionValue(sceneAction.value, sceneAction.datatype),

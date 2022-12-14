@@ -9,15 +9,23 @@ const {
 
 exports.getDevices = fn.asyncMw(async (req, res) => {
   const roomsById = _.keyBy((await dataFn.findAll('Room')), 'id');
+  const aliasesByDeviceId = _.groupBy((await dataFn.findAll('Alias', { model: 'device' })), 'modelId');
+  const aliasesByRoomId = _.groupBy((await dataFn.findAll('Alias', { model: 'room' })), 'modelId');
   return fn.sendResponse(req, res, 200, {
     success: true,
     status: 200,
     code: 0,
     devices: await fn.asyncArrayIterator(await dataFn.findAll('Device'), 'map', async (device) => ({
       ...device,
-      ...(await Devices[device.mfg_id]?.Device?.getState() || {}),
+      ...(await Devices[device.mfgId]?.Device?.getState() || {}),
+      alias: aliasesByDeviceId[device.id]?.find((alias) => alias.preferred) || device.name,
+      aliases: aliasesByDeviceId[device.id] || [],
       actions: constants.deviceActions[device.type] || constants.deviceActions.generic,
-      room: roomsById[device.room_id] || null,
+      room: roomsById[device.roomId] ? {
+        ...roomsById[device.roomId],
+        alias: aliasesByRoomId[device.roomId]?.find((alias) => alias.preferred) || roomsById[device.roomId].name,
+        aliases: aliasesByRoomId[device.roomId] || [],
+      } : null,
     })),
   });
 });
@@ -34,8 +42,10 @@ exports.getDevice = fn.asyncMw(async (req, res) => {
   }
 
   const device = await dataFn.findOne('Device', { id: deviceId });
-  const room = await dataFn.findOne('Room', { id: device.room_id });
-  const state = await Devices[device.mfg_id].Device.getState();
+  const room = await dataFn.findOne('Room', { id: device.roomId });
+  const state = await Devices[device.mfgId].Device.getState();
+  const aliases = await dataFn.findAll('Alias', { model: 'device', modelId: deviceId });
+  const roomAliases = await dataFn.findAll('Alias', { model: 'room', modelId: room.id });
 
   return fn.sendResponse(req, res, 200, {
     success: true,
@@ -44,8 +54,14 @@ exports.getDevice = fn.asyncMw(async (req, res) => {
     device: {
       ...device,
       ...state,
+      alias: aliases.find((alias) => alias.preferred) || device.name,
+      aliases,
       actions: constants.deviceActions[device.type] || constants.deviceActions.generic,
-      room,
+      room: room ? {
+        ...room,
+        alias: roomAliases.find((alias) => alias.preferred) || room.name,
+        aliases: roomAliases || [],
+      } : null,
     },
   });
 });
@@ -66,6 +82,30 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
       message: 'Request body must be an array of device names',
     });
   }
+
+  const deviceNamesOnly = _.uniq(deviceNames.filter((deviceName) => !deviceName.match(/^\*/))
+    .map((deviceName) => fn.slugify(deviceName)));
+  const deviceTypesOnly = _.uniq(deviceNames.filter((deviceName) => deviceName.match(/^\*/))
+    .map((deviceName) => {
+      const deviceType = deviceName.match(/^\*(.*)/)[1].toLowerCase();
+      return deviceType || '*';
+    }));
+
+  const { devicesByNickname } = await deviceHelper.getDevicesByModels(deviceNamesOnly, deviceTypesOnly);
+  const devices = _.uniqBy(Object.values(devicesByNickname).flatMap((devices) => devices), 'mfgId');
+
+  const deviceStates = devices.map((device) => {
+    if (!Devices[device.mfgId]) {
+      return null;
+    }
+    const { Device } = Devices[device.mfgId];
+    return {
+      name: Device.name,
+      online: Device.online,
+      state: Device.state,
+      ...(Device.lightValues ? { light_state: Device.lightValues } : {}),
+    };
+  }).filter((deviceResponse) => deviceResponse) || [];
 
   return fn.sendResponse(req, res, 200, {
     success: true,

@@ -62,6 +62,8 @@ const Dimmer = require('./devices/tasmota/dimmer');
 // const Humidifier = require('./devices/meross/humidifier');
 // const DoorOpener = require('./devices/meross/doorOpener');
 // const Sensor = require('./devices/meross/sensor');
+const TasmotaDeviceClient = require('./lib/tasmota-local/TasmotaDeviceClient');
+const Dimmer = require('./devices/tasmota/dimmer');
 
 // require('./broker/mqttBroker');
 
@@ -428,7 +430,7 @@ try {
           /* eslint-enable camelcase */
         }) => {
           // eslint-disable-next-line camelcase
-          const savedDevice = tuyaDevices.find(({ mfg_id }) => mfg_id === id);
+          const savedDevice = tuyaDevices.find(({ mfgId }) => mfgId === id);
           const deviceId = id;
           const deviceDef = {
             uuid: deviceId,
@@ -439,8 +441,8 @@ try {
             iconType: 1,
             deviceType: dev_type,
             subType: ha_type,
-            fmwareVersion: savedDevice?.firmware_version,
-            hdwareVersion: savedDevice?.hardware_version,
+            fmwareVersion: savedDevice?.firmwareVersion,
+            hdwareVersion: savedDevice?.hardwareVersion,
             skillNumber: '1',
             region: process.env.REGION || 'us',
             domain: `https://px1.tuya${process.env.REGION || 'us'}.com/`,
@@ -522,16 +524,16 @@ try {
     merossLocalDevices.forEach((savedDevice) => {
       const deviceDef = {
         id: savedDevice.id,
-        uuid: savedDevice.mfg_id,
+        uuid: savedDevice.mfgId,
         onlineStatus: 1,
         devName: savedDevice.label,
         devIconId: savedDevice.type,
         userDevIcon: savedDevice.type,
         iconType: 1,
-        deviceType: savedDevice.mfg_model,
-        subType: savedDevice.mfg_sub_model,
-        fmwareVersion: savedDevice.firmware_version,
-        hdwareVersion: savedDevice.hardware_version,
+        deviceType: savedDevice.mfgModel,
+        subType: savedDevice.mfgSubModel,
+        fmwareVersion: savedDevice.firmwareVersion,
+        hdwareVersion: savedDevice.hardwareVersion,
         skillNumber: '2',
         region: process.env.REGION,
         domain: process.env.LOCAL_MQTT_HOSTNAME || 'localhost',
@@ -579,16 +581,16 @@ try {
 
     tasmotaDevices.forEach((savedDevice) => {
       const deviceDef = {
-        uuid: savedDevice.mfg_id,
+        uuid: savedDevice.mfgId,
         onlineStatus: 1,
         devName: savedDevice.label,
         devIconId: savedDevice.type,
         userDevIcon: savedDevice.type,
         iconType: 1,
-        deviceType: savedDevice.mfg_model,
-        subType: savedDevice.mfg_sub_model,
-        fmwareVersion: savedDevice.firmware_version,
-        hdwareVersion: savedDevice.hardware_version,
+        deviceType: savedDevice.mfgModel,
+        subType: savedDevice.mfgSubModel,
+        fmwareVersion: savedDevice.firmwareVersion,
+        hdwareVersion: savedDevice.hardwareVersion,
         skillNumber: '2',
         region: process.env.REGION,
         domain: process.env.LOCAL_MQTT_HOSTNAME || 'localhost',
@@ -600,7 +602,7 @@ try {
       const client = new TasmotaDeviceClient(savedDevice.name, process.env.TASMOTA_PASSWORD, {
         devName: savedDevice.name,
         devLabel: savedDevice.label,
-        id: savedDevice.mfg_id,
+        id: savedDevice.mfgId,
       }, logger);
 
       const DeviceType = global.deviceTypeClassMap?.tasmota?.[deviceDef.deviceType];
@@ -644,9 +646,9 @@ try {
 
     const linkedDevices = await dataFn.findAll('LinkedDevice');
     const deviceLinks = _.groupBy(await fn.asyncArrayIterator(linkedDevices, 'map', async ({
-      source_device_id: sourceDeviceId,
-      target_model: targetModel,
-      target_model_id: targetModelId,
+      sourceDeviceId,
+      targetModel,
+      targetModelId,
       event,
       action,
       value,
@@ -698,7 +700,7 @@ try {
       }
 
       return {
-        topic: sourceDeviceTopic?.topic?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfg_id),
+        topic: sourceDeviceTopic?.topic?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfgId),
         sourceDevice,
         targetDevices,
         messageValueExtractor: sourceDeviceTopic?.valueExtractor ?? (() => { }),

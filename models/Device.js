@@ -1,11 +1,11 @@
 module.exports = (params) => {
   class Device extends params.Model { }
   Device.init({
-    mfg_id: {
+    mfgId: {
       type: params.DataTypes.STRING(64),
       allowNull: false,
     },
-    room_id: {
+    roomId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
     },
     name: {
@@ -24,19 +24,19 @@ module.exports = (params) => {
       type: params.DataTypes.ENUM('bulb', 'socket', 'thermostat', 'fan', 'garage'),
       allowNull: false,
     },
-    mfg_model: {
+    mfgModel: {
       type: params.DataTypes.STRING,
       allowNull: true,
     },
-    mfg_sub_model: {
+    mfgSubModel: {
       type: params.DataTypes.STRING,
       allowNull: true,
     },
-    firmware_version: {
+    firmwareVersion: {
       type: params.DataTypes.STRING,
       allowNull: true,
     },
-    hardware_version: {
+    hardwareVersion: {
       type: params.DataTypes.STRING,
       allowNull: true,
     },
@@ -51,6 +51,7 @@ module.exports = (params) => {
   }, {
     sequelize: params.sequelize,
     modelName: 'device',
+    underscored: true,
     timestamps: false,
   });
 

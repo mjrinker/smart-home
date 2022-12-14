@@ -109,7 +109,7 @@ exports.listeners = () => {
   global.merossAPI.on('deviceInitialized', (deviceMfgId, deviceDef, device) => {
     device.on('data', async (namespace, payload) => {
       // eslint-disable-next-line camelcase
-      const savedDevice = await global.dataFn.findOne('Device', { mfg_id: deviceMfgId });
+      const savedDevice = await global.dataFn.findOne('Device', { mfgId: deviceMfgId });
       const actions = {};
       switch (namespace) {
         case 'Appliance.Control.ToggleX': {

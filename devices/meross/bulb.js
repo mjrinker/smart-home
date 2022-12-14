@@ -102,7 +102,7 @@ class Bulb extends MerossDevice {
         success: false,
         status: 500,
         error: 'LIGHT_CONTROL_ERROR',
-        message: `Cannot change light values: mfg_id ${this.deviceId}`,
+        message: `Cannot change light values: mfgId ${this.deviceId}`,
       };
     }
   }

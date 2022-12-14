@@ -1,7 +1,7 @@
 module.exports = (params) => {
   class SceneAction extends params.Model { }
   SceneAction.init({
-    scene_id: {
+    sceneId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
@@ -9,7 +9,7 @@ module.exports = (params) => {
       type: params.DataTypes.ENUM('device', 'room', 'group'),
       allowNull: false,
     },
-    model_id: {
+    modelId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
@@ -30,6 +30,7 @@ module.exports = (params) => {
   }, {
     sequelize: params.sequelize,
     modelName: 'scene_action',
+    underscored: true,
     timestamps: false,
   });
 

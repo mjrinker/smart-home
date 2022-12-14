@@ -5,11 +5,11 @@ module.exports = (params) => {
       type: params.DataTypes.ENUM('device', 'room', 'group'),
       allowNull: false,
     },
-    model_id: {
+    modelId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
-    preset_id: {
+    presetId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
@@ -17,7 +17,7 @@ module.exports = (params) => {
       type: params.DataTypes.STRING,
       allowNull: false,
     },
-    condition_type: {
+    conditionType: {
       type: params.DataTypes.ENUM('time'),
       allowNull: false,
     },
@@ -32,6 +32,7 @@ module.exports = (params) => {
     sequelize: params.sequelize,
     modelName: 'conditional_actions',
     freezeTableName: true,
+    underscored: true,
     timestamps: false,
   });
 

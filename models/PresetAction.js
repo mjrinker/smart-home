@@ -1,7 +1,7 @@
 module.exports = (params) => {
   class PresetAction extends params.Model { }
   PresetAction.init({
-    preset_id: {
+    presetId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
@@ -22,6 +22,7 @@ module.exports = (params) => {
   }, {
     sequelize: params.sequelize,
     modelName: 'preset_action',
+    underscored: true,
     timestamps: false,
   });
 

@@ -1,15 +1,15 @@
 module.exports = (params) => {
   class LinkedDevice extends params.Model { }
   LinkedDevice.init({
-    source_device_id: {
+    sourceDeviceId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
-    target_model: {
+    targetModel: {
       type: params.DataTypes.ENUM('device', 'room', 'group'),
       allowNull: false,
     },
-    target_model_id: {
+    targetModelId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
@@ -43,6 +43,7 @@ module.exports = (params) => {
     sequelize: params.sequelize,
     modelName: 'linked_devices',
     freezeTableName: true,
+    underscored: true,
     timestamps: false,
   });
 

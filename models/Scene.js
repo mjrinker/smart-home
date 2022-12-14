@@ -20,6 +20,7 @@ module.exports = (params) => {
   }, {
     sequelize: params.sequelize,
     modelName: 'scene',
+    underscored: true,
     timestamps: false,
   });
 

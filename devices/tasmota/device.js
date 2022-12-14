@@ -116,9 +116,9 @@ class TasmotaDevice {
 
   async isOn() {
     try {
-      global.fn.pauseDeviceLinks(this.device.mfg_id);
+      global.fn.pauseDeviceLinks(this.device.mfgId);
       this.state = (await this.client.getPowerState()).toUpperCase() !== 'OFF';
-      global.fn.resumeDeviceLinks(this.device.mfg_id);
+      global.fn.resumeDeviceLinks(this.device.mfgId);
       return this.state;
     } catch (error) {
       return false;

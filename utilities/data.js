@@ -108,10 +108,12 @@ module.exports = () => {
         },
         raw: true,
       });
-      return {
-        ...instance,
-        ...(instance.active === undefined ? {} : { active: !!instance.active }),
-      };
+      Object.entries(models[modelName].rawAttributes).forEach(([fieldName, { type }]) => {
+        if (type.constructor.name === 'BOOLEAN' && instance[fieldName] !== undefined) {
+          instance[fieldName] = !!instance[fieldName];
+        }
+      });
+      return instance;
     }
 
     throw new Error(`Could not find model ${modelName}`);
@@ -127,7 +129,7 @@ module.exports = () => {
       throw new Error(`Could not find model ${modelName}`);
     }
 
-    const rawAttributes = Object.keys(global.models[modelName].rawAttributes);
+    const rawAttributes = Object.keys(models[modelName].rawAttributes);
     const useCache = ['1', 'true'].includes(process.env.USE_CACHE);
     if (useCache) {
       if (data[modelName]) {
@@ -171,10 +173,15 @@ module.exports = () => {
           ...rawAttributes.includes('id') ? [['id']] : [],
         ],
         raw: true,
-      })).map((instance) => ({
-        ...instance,
-        ...(instance.active === undefined ? {} : { active: !!instance.active }),
-      }));
+      })).map((instance) => {
+        Object.entries(models[modelName].rawAttributes).forEach(([fieldName, { type }]) => {
+          if (type.constructor.name === 'BOOLEAN' && instance[fieldName] !== undefined) {
+            // eslint-disable-next-line no-param-reassign
+            instance[fieldName] = !!instance[fieldName];
+          }
+        });
+        return instance;
+      });
     }
 
     throw new Error(`Could not find model ${modelName}`);
@@ -186,12 +193,12 @@ module.exports = () => {
     }
 
     if (model === 'room') {
-      return returnObj.findAll('Device', { room_id: modelId });
+      return returnObj.findAll('Device', { roomId: modelId });
     }
 
     if (model === 'group') {
-      const groupModels = await returnObj.findAll('GroupModel', { group_id: modelId });
-      const groupModelInstances = await fn.asyncArrayIterator(groupModels, 'flatMap', async ({ model: groupModel, model_id: groupModelId }) => returnObj.getDevicesByModelId(groupModel, groupModelId));
+      const groupModels = await returnObj.findAll('GroupModel', { groupId: modelId });
+      const groupModelInstances = await fn.asyncArrayIterator(groupModels, 'flatMap', async ({ model: groupModel, modelId: groupModelId }) => returnObj.getDevicesByModelId(groupModel, groupModelId));
       return groupModelInstances.flatMap((instances) => instances);
     }
 

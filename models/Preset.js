@@ -5,7 +5,7 @@ module.exports = (params) => {
       type: params.DataTypes.ENUM('device', 'room', 'group'),
       allowNull: false,
     },
-    model_id: {
+    modelId: {
       type: params.DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
@@ -24,6 +24,7 @@ module.exports = (params) => {
   }, {
     sequelize: params.sequelize,
     modelName: 'preset',
+    underscored: true,
     timestamps: false,
   });
 

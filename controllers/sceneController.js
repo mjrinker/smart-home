@@ -11,7 +11,7 @@ exports.playScene = fn.asyncMw(async (req, res) => {
     return fn.sendResponse(req, res, 400, {
       success: false,
       status: 400,
-      error: 'INVALID_SCENE_ID',
+      error: 'INVALID_sceneId',
       message: `Invalid scene ID ${sceneId}`,
     });
   }

@@ -10,7 +10,7 @@ exports.addAlias = async (model, modelId, label, preferred = false, transaction 
 
   const existingAlias = await dataFn.findOne('Alias', {
     model,
-    model_id: modelId,
+    modelId,
     alias: slug,
   });
 
@@ -27,7 +27,7 @@ exports.addAlias = async (model, modelId, label, preferred = false, transaction 
 
   const alias = await models.Alias.create({
     model,
-    model_id: modelId,
+    modelId,
     alias: slug,
     label,
     preferred,
@@ -58,7 +58,7 @@ exports.removeAllAliases = async (model, modelId) => {
   const deleted = await models.Alias.destroy({
     where: {
       model,
-      model_id: modelId,
+      modelId,
     },
   });
 
