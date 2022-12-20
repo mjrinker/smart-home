@@ -181,7 +181,7 @@ exports.getRoom = fn.asyncMw(async (req, res) => {
     return {
       ...device,
       ...(await Devices[device.mfgId]?.Device?.getState() || {}),
-      alias: deviceAliases.find((alias) => alias.preferred) || device.name,
+      alias: deviceAliases.find((alias) => alias.preferred) || device.label,
       aliases: deviceAliases,
       actions: constants.deviceActions[device.type] || constants.deviceActions.generic,
     };
@@ -199,7 +199,7 @@ exports.getRoom = fn.asyncMw(async (req, res) => {
     room: {
       ...room,
       ...roomState,
-      alias: aliases.find((alias) => alias.preferred) || room.name,
+      alias: aliases.find((alias) => alias.preferred) || room.label,
       aliases,
       actions: constants.roomActions,
       devices,
@@ -213,7 +213,7 @@ exports.getRooms = fn.asyncMw(async (req, res) => {
     return {
       ...device,
       ...(await Devices[device.mfgId]?.Device?.getState() || {}),
-      alias: deviceAliases.find((alias) => alias.preferred) || device.name,
+      alias: deviceAliases.find((alias) => alias.preferred) || device.label,
       aliases: deviceAliases,
       actions: constants.deviceActions[device.type] || constants.deviceActions.generic,
     };
@@ -225,7 +225,7 @@ exports.getRooms = fn.asyncMw(async (req, res) => {
   const deviceStatesByDeviceId = Object.fromEntries(deviceStates.map((deviceState) => [deviceState.id, deviceState]));
   let rooms = (await dataFn.findAll('Room')).map((room) => ({
     ...room,
-    alias: aliasesByRoomId[room.id]?.find((alias) => alias.preferred) || room.name,
+    alias: aliasesByRoomId[room.id]?.find((alias) => alias.preferred) || room.label,
     aliases: aliasesByRoomId[room.id] || [],
     actions: constants.roomActions,
     devices: devicesByRoomId[room.id]?.map((device) => (

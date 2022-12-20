@@ -8,22 +8,24 @@ const {
 } = global;
 
 exports.getDevices = fn.asyncMw(async (req, res) => {
+  const devices = await dataFn.findAll('Device');
   const roomsById = _.keyBy((await dataFn.findAll('Room')), 'id');
   const aliasesByDeviceId = _.groupBy((await dataFn.findAll('Alias', { model: 'device' })), 'modelId');
   const aliasesByRoomId = _.groupBy((await dataFn.findAll('Alias', { model: 'room' })), 'modelId');
+
   return fn.sendResponse(req, res, 200, {
     success: true,
     status: 200,
     code: 0,
-    devices: await fn.asyncArrayIterator(await dataFn.findAll('Device'), 'map', async (device) => ({
+    devices: await fn.asyncArrayIterator(devices, 'map', async (device) => ({
       ...device,
       ...(await Devices[device.mfgId]?.Device?.getState() || {}),
-      alias: aliasesByDeviceId[device.id]?.find((alias) => alias.preferred) || device.name,
+      alias: aliasesByDeviceId[device.id]?.find((alias) => alias.preferred) || device.label,
       aliases: aliasesByDeviceId[device.id] || [],
       actions: constants.deviceActions[device.type] || constants.deviceActions.generic,
       room: roomsById[device.roomId] ? {
         ...roomsById[device.roomId],
-        alias: aliasesByRoomId[device.roomId]?.find((alias) => alias.preferred) || roomsById[device.roomId].name,
+        alias: aliasesByRoomId[device.roomId]?.find((alias) => alias.preferred) || roomsById[device.roomId].label,
         aliases: aliasesByRoomId[device.roomId] || [],
       } : null,
     })),
@@ -47,6 +49,26 @@ exports.getDevice = fn.asyncMw(async (req, res) => {
   const aliases = await dataFn.findAll('Alias', { model: 'device', modelId: deviceId });
   const roomAliases = await dataFn.findAll('Alias', { model: 'room', modelId: room.id });
 
+  const groupIds = _.uniq(Object.keys(fn.merge(
+    (await deviceHelper.getGroupsForDevices([deviceId])),
+    (await deviceHelper.getGroupsForDevicesFromRoomIds([room.id])),
+  )));
+
+  const presets = await dataFn.findAll('Preset', [
+    {
+      model: 'device',
+      modelId: deviceId,
+    },
+    {
+      model: 'room',
+      modelId: room.id,
+    },
+    ...(groupIds?.length ? [{
+      model: 'group',
+      modelId: groupIds,
+    }] : [{}]),
+  ]);
+
   return fn.sendResponse(req, res, 200, {
     success: true,
     status: 200,
@@ -54,12 +76,13 @@ exports.getDevice = fn.asyncMw(async (req, res) => {
     device: {
       ...device,
       ...state,
-      alias: aliases.find((alias) => alias.preferred) || device.name,
+      alias: aliases.find((alias) => alias.preferred) || device.label,
       aliases,
       actions: constants.deviceActions[device.type] || constants.deviceActions.generic,
+      presets,
       room: room ? {
         ...room,
-        alias: roomAliases.find((alias) => alias.preferred) || room.name,
+        alias: roomAliases.find((alias) => alias.preferred) || room.label,
         aliases: roomAliases || [],
       } : null,
     },

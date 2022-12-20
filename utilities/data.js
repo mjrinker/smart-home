@@ -109,7 +109,7 @@ module.exports = () => {
         raw: true,
       });
       Object.entries(models[modelName].rawAttributes).forEach(([fieldName, { type }]) => {
-        if (type.constructor.name === 'BOOLEAN' && instance[fieldName] !== undefined) {
+        if (type.constructor.name === 'BOOLEAN' && instance?.[fieldName] !== undefined) {
           instance[fieldName] = !!instance[fieldName];
         }
       });
