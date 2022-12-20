@@ -26,6 +26,7 @@ const {
   TimeoutError,
 } = require('sequelize');
 const uuid = require('uuid').v4;
+const yargs = require('yargs');
 
 const {
   black,
@@ -53,6 +54,7 @@ const MerossDevice = require('./devices/meross/device');
 const Bulb = require('./devices/meross/bulb');
 const Thermostat = require('./devices/meross/thermostat');
 const Plug = require('./devices/meross/plug');
+const MerossDimmer = require('./devices/meross/dimmer');
 const TasmotaDeviceClient = require('./lib/tasmota-local/TasmotaDeviceClient');
 const Dimmer = require('./devices/tasmota/dimmer');
 // TODO add more device classes:
@@ -62,6 +64,20 @@ const Dimmer = require('./devices/tasmota/dimmer');
 // const Sensor = require('./devices/meross/sensor');
 
 // require('./broker/mqttBroker');
+
+const { argv } = yargs
+  .option('excludePattern', {
+    alias: 'x',
+    description: 'Do not connect to any devices whose name matches the pattern',
+    type: 'string',
+  })
+  .option('includeOnlyPattern', {
+    alias: 'i',
+    description: 'Only connect to devices whose name matches the pattern',
+    type: 'string',
+  })
+  .help()
+  .alias('help', 'h');
 
 const logger = {
   ...(Logger()),
@@ -318,6 +334,7 @@ try {
       logger,
       logout,
       MerossDevice,
+      MerossDimmer,
       Model,
       moment,
       Op,
@@ -374,6 +391,8 @@ try {
         mss120: Plug,
         mss620: Plug,
         mss630: Plug,
+        mss560: MerossDimmer,
+        mss560x: MerossDimmer,
       },
       tasmota: {
         Gosund_SW2: Dimmer,
@@ -508,10 +527,26 @@ try {
         }),
       };
 
-      device.connect(() => {
-        global.Devices[deviceDef.uuid].Device.isOn();
-        global.Devices[deviceDef.uuid].Device.getLightValues?.();
-      });
+      if (argv.includeOnlyPattern) {
+        if (savedDevice.name.match(new RegExp(argv.includeOnlyPattern))) {
+          device.connect(() => {
+            global.Devices[deviceDef.uuid].Device.isOn();
+            global.Devices[deviceDef.uuid].Device.getLightValues?.();
+          });
+        }
+      } else if (argv.excludePattern) {
+        if (!savedDevice.name.match(new RegExp(argv.excludePattern))) {
+          device.connect(() => {
+            global.Devices[deviceDef.uuid].Device.isOn();
+            global.Devices[deviceDef.uuid].Device.getLightValues?.();
+          });
+        }
+      } else {
+        device.connect(() => {
+          global.Devices[deviceDef.uuid].Device.isOn();
+          global.Devices[deviceDef.uuid].Device.getLightValues?.();
+        });
+      }
     });
 
     const tasmotaDevices = await dataFn.findAll('Device', { platform: 'tasmota' });
@@ -551,11 +586,29 @@ try {
         }),
       };
 
-      client.connect(() => {
-        global.Devices[deviceDef.uuid].Device.isOn().then((state) => {
-          global.Devices[deviceDef.uuid].Device.state = state;
+      if (argv.includeOnlyPattern) {
+        if (savedDevice.name.match(new RegExp(argv.includeOnlyPattern))) {
+          client.connect(() => {
+            global.Devices[deviceDef.uuid].Device.isOn().then((state) => {
+              global.Devices[deviceDef.uuid].Device.state = state;
+            });
+          });
+        }
+      } else if (argv.excludePattern) {
+        if (!savedDevice.name.match(new RegExp(argv.excludePattern))) {
+          client.connect(() => {
+            global.Devices[deviceDef.uuid].Device.isOn().then((state) => {
+              global.Devices[deviceDef.uuid].Device.state = state;
+            });
+          });
+        }
+      } else {
+        client.connect(() => {
+          global.Devices[deviceDef.uuid].Device.isOn().then((state) => {
+            global.Devices[deviceDef.uuid].Device.state = state;
+          });
         });
-      });
+      }
     });
 
     global.deviceLinkActions = {};
