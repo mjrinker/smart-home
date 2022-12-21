@@ -650,15 +650,15 @@ try {
         case 'off':
         case 'toggle':
         case 'power': {
-          sourceDeviceTopic = TopicProvider.getPowerTopic();
+          sourceDeviceTopic = TopicProvider.getPowerTopic(sourceDevice.type);
           break;
         }
         case 'brightness': {
-          sourceDeviceTopic = TopicProvider.getBrightnessTopic();
+          sourceDeviceTopic = TopicProvider.getBrightnessTopic(sourceDevice.type);
           break;
         }
         case 'dimmer': {
-          sourceDeviceTopic = TopicProvider.getDimmerTopic();
+          sourceDeviceTopic = TopicProvider.getDimmerTopic(sourceDevice.type);
           break;
         }
         default: {
@@ -671,7 +671,8 @@ try {
       }
 
       return {
-        topic: sourceDeviceTopic?.topic?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfg_id),
+        topic: sourceDeviceTopic.topic?.replaceAll(/\{\{deviceId}}/g, sourceDevice.mfg_id),
+        sourceDevice,
         targetDevices,
         messageValueExtractor: sourceDeviceTopic?.valueExtractor ?? (() => { }),
         messageEventExtractor: sourceDeviceTopic?.eventExtractor ?? (() => { }),

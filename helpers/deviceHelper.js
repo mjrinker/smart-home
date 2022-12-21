@@ -12,6 +12,7 @@ const {
   fn,
   Light,
   logger,
+  MerossDimmer,
   models,
   sequelize,
   Thermostat,
@@ -227,7 +228,7 @@ exports.calculateNewLightValue = (lightValue, lightProperty, actions, Device) =>
     }
   }
 
-  return mutableLightValue;
+  return parseInt(mutableLightValue, 10);
 };
 
 exports.combineLightValueActions = (actions, Device) => {
@@ -480,7 +481,7 @@ exports.performDeviceAction = async (deviceData) => {
         case 'brightness':
         // falls through
         case 'luminance': {
-          if (Device instanceof Light || Device instanceof Bulb) {
+          if (Device instanceof Light || Device instanceof Bulb || Device instanceof MerossDimmer) {
             Device.setBrightness(value).then((response) => actionCallback(response, action));
           } else {
             errors.push({
