@@ -43,7 +43,16 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
       name: Device.name,
       online: Device.online,
       state: Device.state,
-      ...(Device.lightValues ? { light_state: Device.lightValues } : {}),
+      ...(Device.lightValues
+        ? {
+          light_state: {
+            brightness: 0,
+            color_temp: 0,
+            color: '#ffffff',
+            ...Device.lightValues,
+          },
+        }
+        : {}),
     };
   }).filter((deviceResponse) => deviceResponse) || [];
 
