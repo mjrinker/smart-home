@@ -203,7 +203,7 @@ exports.getRooms = fn.asyncMw(async (req, res) => {
   }));
   rooms = rooms.map((room) => ({
     ...room,
-    state: devices.filter((device) => device.type === 'bulb').some((device) => device.state),
+    state: room.devices.filter((device) => device.type === 'bulb').some((device) => device.state),
   }));
   return fn.sendResponse(req, res, 200, {
     success: true,
