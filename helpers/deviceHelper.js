@@ -56,6 +56,54 @@ const blendColors = (percent, colors) => {
   return rgbToHex(red, green, blue);
 };
 
+exports.getDeviceStates = async (deviceNames) => {
+  if (!Array.isArray(deviceNames) || deviceNames.length === 0) {
+    return [];
+  }
+
+  const deviceNamesOnly = _.uniq(deviceNames.filter((deviceName) => !deviceName.match(/^\*/))
+    .map((deviceName) => fn.slugify(deviceName)));
+  const deviceTypesOnly = _.uniq(deviceNames.filter((deviceName) => deviceName.match(/^\*/))
+    .map((deviceName) => {
+      const deviceType = deviceName.match(/^\*(.*)/)[1].toLowerCase();
+      return deviceType || '*';
+    }));
+
+  const { devicesByNickname } = await exports.getDevicesByModels(deviceNamesOnly, deviceTypesOnly);
+  const devices = _.uniqBy(Object.values(devicesByNickname).flatMap((devices) => devices), 'mfg_id');
+
+  const deviceStates = devices.map((device) => {
+    if (!Devices[device.mfg_id]) {
+      return null;
+    }
+    const { Device } = Devices[device.mfg_id];
+    return {
+      id: device.id,
+      name: Device.name,
+      online: Device.online,
+      state: Device.state,
+      ...(Device.lightValues
+        ? {
+          light_state: {
+            brightness: 0,
+            color_temp: 0,
+            color: '#ffffff',
+            ...Device.lightValues,
+          },
+        }
+        : {
+          light_state: {
+            brightness: 0,
+            color_temp: 0,
+            color: '#ffffff',
+          },
+        }),
+    };
+  }).filter((deviceResponse) => deviceResponse) || [];
+
+  return deviceStates.filter((device) => device);
+};
+
 exports.getShortPresetActionsByDeviceId = async ({
   deviceIds,
   roomIds,

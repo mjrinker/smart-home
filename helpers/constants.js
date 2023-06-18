@@ -1,4 +1,4 @@
-exports.deviceProps = ['id', 'mfg_id', 'name', 'label', 'platform', 'type'];
+exports.deviceProps = ['id', 'mfg_id', 'name', 'label', 'platform', 'type', 'state', 'online', 'light_state'];
 
 exports.roomActions = [
   {

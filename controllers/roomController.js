@@ -186,18 +186,30 @@ exports.getRoom = fn.asyncMw(async (req, res) => {
 });
 
 exports.getRooms = fn.asyncMw(async (req, res) => {
-  const devicesByRoomId = _.groupBy((await dataFn.findAll('Device')), 'room_id');
+  const devices = await dataFn.findAll('Device');
+  const devicesByRoomId = _.groupBy(devices, 'room_id');
+  const deviceNames = devices.map((device) => device.name);
+  const deviceStates = await deviceHelper.getDeviceStates(deviceNames);
+  const deviceStatesByDeviceId = Object.fromEntries(deviceStates.map((deviceState) => [deviceState.id, deviceState]));
+  let rooms = (await dataFn.findAll('Room')).map((room) => ({
+    ...room,
+    actions: constants.roomActions,
+    devices: devicesByRoomId[room.id]?.map((device) => (
+      fn.filterObjectProperties({
+        ...device,
+        ...deviceStatesByDeviceId[device.id],
+      }, constants.deviceProps)
+    )) || [],
+  }));
+  rooms = rooms.map((room) => ({
+    ...room,
+    state: devices.filter((device) => device.type === 'bulb').some((device) => device.state),
+  }));
   return fn.sendResponse(req, res, 200, {
     success: true,
     status: 200,
     code: 0,
-    rooms: (await dataFn.findAll('Room')).map((room) => ({
-      ...room,
-      actions: constants.roomActions,
-      devices: devicesByRoomId[room.id]?.map((device) => (
-        fn.filterObjectProperties(device, constants.deviceProps)
-      )) || [],
-    })),
+    rooms,
   });
 });
 
