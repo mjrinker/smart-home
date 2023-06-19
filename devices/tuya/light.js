@@ -30,11 +30,11 @@ class Light extends TuyaDevice {
 
   /* Color Temperature */
   async supportsColorTemperature() {
-    return this.supportsFeature('color_temp');
+    return this.supportsFeature('colorTemp');
   }
 
   async getColorTemperature() {
-    return (await this.getSkills()).color_temp;
+    return (await this.getSkills()).colorTemp;
   }
 }
 module.exports = Light;

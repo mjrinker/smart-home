@@ -62,8 +62,6 @@ const Dimmer = require('./devices/tasmota/dimmer');
 // const Humidifier = require('./devices/meross/humidifier');
 // const DoorOpener = require('./devices/meross/doorOpener');
 // const Sensor = require('./devices/meross/sensor');
-const TasmotaDeviceClient = require('./lib/tasmota-local/TasmotaDeviceClient');
-const Dimmer = require('./devices/tasmota/dimmer');
 
 // require('./broker/mqttBroker');
 
@@ -299,11 +297,13 @@ try {
     global.dbUpdateLock = false;
 
     // initialize meross connection
-    global.merossAPI = new MerossCloud({
-      email: process.env.MEROSS_USERNAME,
-      password: process.env.MEROSS_PASSWORD,
-      logger: () => { },
-    });
+    if (process.env.MEROSS_USERNAME && process.env.MEROSS_PASSWORD) {
+      global.merossAPI = new MerossCloud({
+        email: process.env.MEROSS_USERNAME,
+        password: process.env.MEROSS_PASSWORD,
+        logger: () => { },
+      });
+    }
 
     // initialize tuya connection
     const tuyaAPI = new CloudTuya({
@@ -510,7 +510,7 @@ try {
 
     // connect to meross and discover devices
     merossHelper.listeners();
-    global.merossAPI.connect((error) => {
+    global.merossAPI?.connect((error) => {
       if (error) {
         logger.error(`Couldn't connect to Meross: ${error}`);
       } else {

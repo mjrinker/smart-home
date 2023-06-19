@@ -70,13 +70,13 @@ exports.getDeviceStates = async (deviceNames) => {
     }));
 
   const { devicesByNickname } = await exports.getDevicesByModels(deviceNamesOnly, deviceTypesOnly);
-  const devices = _.uniqBy(Object.values(devicesByNickname).flatMap((devices) => devices), 'mfg_id');
+  const devices = _.uniqBy(Object.values(devicesByNickname).flatMap((devices) => devices), 'mfgId');
 
   const deviceStates = devices.map((device) => {
-    if (!Devices[device.mfg_id]) {
+    if (!Devices[device.mfgId]) {
       return null;
     }
-    const { Device } = Devices[device.mfg_id];
+    const { Device } = Devices[device.mfgId];
     return {
       id: device.id,
       name: Device.name,
@@ -84,17 +84,17 @@ exports.getDeviceStates = async (deviceNames) => {
       state: Device.state,
       ...(Device.lightValues
         ? {
-          light_state: {
+          lightState: {
             brightness: 0,
-            color_temp: 0,
+            colorTemp: 0,
             color: '#ffffff',
             ...Device.lightValues,
           },
         }
         : {
-          light_state: {
+          lightState: {
             brightness: 0,
-            color_temp: 0,
+            colorTemp: 0,
             color: '#ffffff',
           },
         }),
@@ -283,7 +283,7 @@ exports.combineLightValueActions = (actions, Device) => {
   const newActions = _.cloneDeep(actions);
   const colorValue = newActions.color;
   const brightnessValue = exports.calculateNewLightValue(newActions.brightness || newActions.luminance, 'brightness', newActions, Device);
-  const temperatureValue = exports.calculateNewLightValue(newActions.temperature, 'color_temp', newActions, Device);
+  const temperatureValue = exports.calculateNewLightValue(newActions.temperature, 'colorTemp', newActions, Device);
   delete newActions.luminance;
 
   if (temperatureValue) {
@@ -327,7 +327,7 @@ exports.getMerossDevices = async () => Object.values(Devices).map(({ deviceDef }
   data: {
     online: true,
     state: true,
-    light_state: {},
+    lightState: {},
   },
   name: deviceDef.name,
   icon: null,

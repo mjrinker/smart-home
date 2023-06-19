@@ -60,7 +60,7 @@ class MerossDevice {
           data: {
             online: true,
             state: true,
-            light_state: null,
+            lightState: null,
           },
           name: this.name,
           icon: this.deviceDef.userDevIcon || this.deviceDef.devIconId,
@@ -94,7 +94,7 @@ class MerossDevice {
           data: {
             online: true,
             state: false,
-            light_state: null,
+            lightState: null,
           },
           name: this.name,
           icon: this.deviceDef.userDevIcon || this.deviceDef.devIconId,

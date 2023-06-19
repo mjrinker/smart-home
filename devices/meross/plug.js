@@ -8,7 +8,7 @@ class Plug extends MerossDevice {
   async turnOn() {
     const response = await super.turnOn();
     if (response?.success && response?.device?.data) {
-      response.device.data.light_state = this.lightValues;
+      response.device.data.lightState = this.lightValues;
     }
     return response;
   }
@@ -16,7 +16,7 @@ class Plug extends MerossDevice {
   async turnOff() {
     const response = await super.turnOff();
     if (response?.success && response?.device?.data) {
-      response.device.data.light_state = this.lightValues;
+      response.device.data.lightState = this.lightValues;
     }
     return response;
   }

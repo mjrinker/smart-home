@@ -126,7 +126,7 @@ exports.getDeviceState = fn.asyncMw(async (req, res) => {
       name: Device.name,
       online: Device.online,
       state: Device.state,
-      ...(Device.lightValues ? { light_state: Device.lightValues } : {}),
+      ...(Device.lightValues ? { lightState: Device.lightValues } : {}),
     };
   }).filter((deviceResponse) => deviceResponse) || [];
 

@@ -91,7 +91,7 @@ exports.listeners = () => {
             if (lightState) {
               global.Devices[deviceId].Device.lightValues = {
                 brightness: lightState.luminance || -1,
-                color_temp: lightState.temperature || -1,
+                colorTemp: lightState.temperature || -1,
                 color: (Number.isNaN(Number(lightState.rgb))
                   ? 0xffffff : Number(lightState.rgb)).toString(16),
               };
@@ -106,7 +106,7 @@ exports.listeners = () => {
   };
 
   const overrideSleep = 1250;
-  global.merossAPI.on('deviceInitialized', (deviceMfgId, deviceDef, device) => {
+  global.merossAPI?.on('deviceInitialized', (deviceMfgId, deviceDef, device) => {
     device.on('data', async (namespace, payload) => {
       // eslint-disable-next-line camelcase
       const savedDevice = await global.dataFn.findOne('Device', { mfgId: deviceMfgId });
@@ -213,7 +213,7 @@ exports.listeners = () => {
             const newLightValues = payload?.light;
             global.Devices[deviceMfgId].Device.lightValues = {
               brightness: newLightValues?.luminance || -1,
-              color_temp: newLightValues?.temperature || -1,
+              colorTemp: newLightValues?.temperature || -1,
               color: (Number.isNaN(Number(newLightValues?.rgb))
                 ? 0xffffff : Number(newLightValues?.rgb)).toString(16),
             };

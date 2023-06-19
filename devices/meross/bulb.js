@@ -12,7 +12,7 @@ class Bulb extends MerossDevice {
 
     this.lightValues = {
       brightness: 100,
-      color_temp: 100,
+      colorTemp: 100,
       color: 'ffffff',
     };
 
@@ -22,7 +22,7 @@ class Bulb extends MerossDevice {
   async turnOn() {
     const response = await super.turnOn();
     if (response?.success && response?.device?.data) {
-      response.device.data.light_state = this.lightValues;
+      response.device.data.lightState = this.lightValues;
     }
     return response;
   }
@@ -30,7 +30,7 @@ class Bulb extends MerossDevice {
   async turnOff() {
     const response = await super.turnOff();
     if (response?.success && response?.device?.data) {
-      response.device.data.light_state = this.lightValues;
+      response.device.data.lightState = this.lightValues;
     }
     return response;
   }
@@ -65,14 +65,14 @@ class Bulb extends MerossDevice {
       capacity: mode, // 1 = RGB, 2 = TEMPERATURE, 3 = (not supported), 4 = LUMINANCE, 5 = RGB_LUMINANCE, 6 = TEMPERATURE_LUMINANCE
       channel: 0,
       luminance: features.brightness || this.lightValues.brightness,
-      temperature: features.temperature || this.lightValues.color_temp,
+      temperature: features.temperature || this.lightValues.colorTemp,
       rgb: parseInt(features.color?.replaceAll(/[^\da-f]/gi, '') || 'ffffff', 16) || this.lightValues.color,
     };
 
     try {
       const previousLightState = this.lightValues;
       this.lightValues.brightness = lightValues.luminance;
-      this.lightValues.color_temp = lightValues.temperature;
+      this.lightValues.colorTemp = lightValues.temperature;
       this.lightValues.color = lightValues.rgb;
       this.controlLight(lightValues).catch(() => {
         this.lightValues = previousLightState;
@@ -84,9 +84,9 @@ class Bulb extends MerossDevice {
           data: {
             online: true,
             state: true,
-            light_state: {
+            lightState: {
               brightness: lightValues.luminance,
-              color_temp: lightValues.temperature,
+              colorTemp: lightValues.temperature,
               color: lightValues.rgb,
             },
           },
@@ -112,7 +112,7 @@ class Bulb extends MerossDevice {
       const response = await this.getSystemAllData();
       this.lightValues = {
         brightness: response?.all?.digest?.light?.luminance || null,
-        color_temp: response?.all?.digest?.light?.temperature || null,
+        colorTemp: response?.all?.digest?.light?.temperature || null,
         color: retrieveColor(response),
       };
       return this.lightValues;

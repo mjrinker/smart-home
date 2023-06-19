@@ -125,7 +125,7 @@ class CloudTuya {
     debug(devices);
     // Check if device is in device list first
     if (config.id) {
-      const matchDevice = await this.devices.filter((device) => device.id === config.id);
+      const matchDevice = await this.devices?.filter((device) => device.id === config.id);
       if (matchDevice) {
         this.currentDevices = matchDevice;
       }

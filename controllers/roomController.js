@@ -212,7 +212,6 @@ exports.getRooms = fn.asyncMw(async (req, res) => {
     const deviceAliases = await dataFn.findAll('Alias', { model: 'device', modelId: device.id });
     return {
       ...device,
-      ...(await Devices[device.mfgId]?.Device?.getState() || {}),
       alias: deviceAliases.find((alias) => alias.preferred) || device.label,
       aliases: deviceAliases,
       actions: constants.deviceActions[device.type] || constants.deviceActions.generic,
@@ -225,15 +224,15 @@ exports.getRooms = fn.asyncMw(async (req, res) => {
   const deviceStatesByDeviceId = Object.fromEntries(deviceStates.map((deviceState) => [deviceState.id, deviceState]));
   let rooms = (await dataFn.findAll('Room')).map((room) => ({
     ...room,
+    online: false,
+    state: false,
     alias: aliasesByRoomId[room.id]?.find((alias) => alias.preferred) || room.label,
     aliases: aliasesByRoomId[room.id] || [],
     actions: constants.roomActions,
-    devices: devicesByRoomId[room.id]?.map((device) => (
-      fn.filterObjectProperties({
-        ...device,
-        ...deviceStatesByDeviceId[device.id],
-      }, constants.deviceProps)
-    )) || [],
+    devices: devicesByRoomId[room.id]?.map((device) => ({
+      ...device,
+      ...deviceStatesByDeviceId[device.id],
+    })) || [],
   }));
   rooms = rooms.map((room) => ({
     ...room,

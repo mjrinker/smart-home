@@ -19,7 +19,7 @@ class Dimmer extends MerossDevice {
   async turnOn() {
     const response = await super.turnOn();
     if (response?.success && response?.device?.data) {
-      response.device.data.light_state = this.lightValues;
+      response.device.data.lightState = this.lightValues;
     }
     return response;
   }
@@ -27,7 +27,7 @@ class Dimmer extends MerossDevice {
   async turnOff() {
     const response = await super.turnOff();
     if (response?.success && response?.device?.data) {
-      response.device.data.light_state = this.lightValues;
+      response.device.data.lightState = this.lightValues;
     }
     return response;
   }
@@ -130,7 +130,7 @@ class Dimmer extends MerossDevice {
           data: {
             online: true,
             state: true,
-            light_state: {
+            lightState: {
               brightness: lightValues.luminance,
             },
           },
