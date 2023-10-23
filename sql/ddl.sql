@@ -1,177 +1,172 @@
-USE `smart_home`;
+CREATE TABLE `aliases` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `model` enum('device','room','group','preset','color') NOT NULL,
+  `model_id` int(10) unsigned NOT NULL,
+  `alias` varchar(255) NOT NULL,
+  `label` varchar(255) NOT NULL,
+  `preferred` tinyint(1) DEFAULT 0,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_alias_model` (`alias`,`model`,`active`),
+  KEY `model_idx` (`model`),
+  KEY `model_id_idx` (`model_id`),
+  KEY `preferred_idx` (`preferred`)
+) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `db_updates` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL,
-  `applied_on` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_name`(`name`)
-) ENGINE = InnoDB;
+CREATE TABLE `colors` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `label` varchar(255) NOT NULL,
+  `value` varchar(9) NOT NULL,
+  `display_value` varchar(9) NOT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_name` (`name`,`active`)
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `rooms` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL,
-  `label` VARCHAR(255) NOT NULL,
-  `order` INT DEFAULT 2147483647 NOT NULL,
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_name`(`name`, `active`)
-) ENGINE = InnoDB;
+CREATE TABLE `conditional_actions` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `model` enum('device','room','group') NOT NULL,
+  `model_id` int(10) unsigned NOT NULL,
+  `preset_id` int(10) unsigned NOT NULL,
+  `action` varchar(255) NOT NULL,
+  `condition_type` enum('time') NOT NULL,
+  `condition` varchar(255) DEFAULT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_model__model_id__action__condition` (`model`,`model_id`,`action`,`condition`,`active`)
+) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `groups` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL,
-  `label` VARCHAR(255) NOT NULL,
-  `order` INT DEFAULT 2147483647 NOT NULL,
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_name`(`name`, `active`)
-) ENGINE = InnoDB;
+CREATE TABLE `db_updates` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `applied_on` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `devices` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `mfg_id` VARCHAR(64) NOT NULL,
-  `room_id` INT UNSIGNED,
-  `name` VARCHAR(255) NOT NULL,
-  `label` VARCHAR(255) NOT NULL,
-  `platform` VARCHAR(255) NOT NULL,
-  `type` ENUM('bulb', 'socket', 'thermostat', 'fan', 'garage') NOT NULL,
-  `order` INT DEFAULT 2147483647 NOT NULL,
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_mfg_id`(`mfg_id`, `active`),
-  UNIQUE KEY `UK_name`(`name`, `active`),
-  INDEX `room_id_idx` (`room_id` ASC)
-) ENGINE = InnoDB;
+CREATE TABLE `devices` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `mfg_id` varchar(64) NOT NULL,
+  `room_id` int(10) unsigned DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `label` varchar(255) NOT NULL,
+  `platform` varchar(255) NOT NULL,
+  `type` enum('bulb','socket','thermostat','fan','garage','switch','dimmer') NOT NULL,
+  `mfg_model` varchar(255) DEFAULT NULL,
+  `mfg_sub_model` varchar(255) DEFAULT NULL,
+  `firmware_version` varchar(20) DEFAULT NULL,
+  `hardware_version` varchar(20) DEFAULT NULL,
+  `order` int(11) NOT NULL DEFAULT 2147483647,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_mfg_id` (`mfg_id`,`active`),
+  UNIQUE KEY `UK_name` (`name`,`active`),
+  KEY `room_id_idx` (`room_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `groups_models` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `group_id` INT UNSIGNED NOT NULL,
-  `model` ENUM('device', 'room', 'group') NOT NULL,
-  `model_id` INT UNSIGNED NOT NULL,
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_group_id__model__model_id`(`group_id`, `model`, `model_id`, `active`)
-) ENGINE = InnoDB;
+CREATE TABLE `groups` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `label` varchar(255) NOT NULL,
+  `order` int(11) NOT NULL DEFAULT 2147483647,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_name` (`name`,`active`)
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `presets` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `model` ENUM('device', 'room', 'group') NOT NULL,
-  `model_id` INT UNSIGNED NOT NULL,
-  `name` VARCHAR(255) NOT NULL,
-  `label` VARCHAR(255) NOT NULL,
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_model__model_id__name`(`model`, `model_id`, `name`, `active`),
-  INDEX `name_idx` (`name` ASC)
-) ENGINE = InnoDB;
+CREATE TABLE `groups_models` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `group_id` int(10) unsigned NOT NULL,
+  `model` enum('device','room','group') NOT NULL,
+  `model_id` int(10) unsigned NOT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_group_id__model__model_id` (`group_id`,`model`,`model_id`,`active`)
+) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `preset_actions` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `preset_id` INT UNSIGNED NOT NULL,
-  `action` VARCHAR(255) NOT NULL,
-  `value` VARCHAR(255),
-  `datatype` ENUM('null', 'boolean', 'number', 'string'),
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_preset_id__action`(`preset_id`, `action`, `active`)
-) ENGINE = InnoDB;
+CREATE TABLE `linked_devices` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `source_device_id` int(10) unsigned NOT NULL,
+  `target_model` enum('device','room','group') NOT NULL,
+  `target_model_id` int(10) unsigned NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `label` varchar(255) NOT NULL,
+  `event` varchar(255) NOT NULL,
+  `action` varchar(255) NOT NULL,
+  `value` varchar(255) DEFAULT NULL,
+  `datatype` enum('null','boolean','number','string') DEFAULT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_srcdevid_tgtmdl_tgtmdlid_evt_actn` (`source_device_id`,`target_model`,`target_model_id`,`event`,`action`,`active`),
+  KEY `name_idx` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `conditional_actions` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `model` ENUM('device', 'room', 'group') NOT NULL,
-  `model_id` INT UNSIGNED NOT NULL,
-  `preset_id` INT UNSIGNED NOT NULL,
-  `action` VARCHAR(255) NOT NULL,
-  `condition_type` ENUM('time') NOT NULL,
-  `condition` VARCHAR(255),
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_model__model_id__action__condition`(`model`, `model_id`, `action`, `condition`, `active`)
-) ENGINE = InnoDB;
+CREATE TABLE `preset_actions` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `preset_id` int(10) unsigned NOT NULL,
+  `action` varchar(255) NOT NULL,
+  `value` varchar(255) DEFAULT NULL,
+  `datatype` enum('null','boolean','number','string') DEFAULT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_preset_id__action` (`preset_id`,`action`,`active`)
+) ENGINE=InnoDB AUTO_INCREMENT=98 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `aliases` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `model` ENUM('device', 'room', 'group', 'preset', 'color') NOT NULL,
-  `model_id` INT UNSIGNED NOT NULL,
-  `alias` VARCHAR(255) NOT NULL,
-  `label` VARCHAR(255) NOT NULL,
-  `preferred` BOOLEAN DEFAULT FALSE,
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_alias_model`(`alias`, `model`, `active`),
-  INDEX `model_idx` (`model` ASC),
-  INDEX `model_id_idx` (`model_id` ASC),
-  INDEX `preferred_idx` (`preferred` DESC)
-) ENGINE = InnoDB;
+CREATE TABLE `presets` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `model` enum('device','room','group') NOT NULL,
+  `model_id` int(10) unsigned NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `label` varchar(255) NOT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_model__model_id__name` (`model`,`model_id`,`name`,`active`),
+  KEY `name_idx` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `scenes` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL,
-  `label` VARCHAR(255) NOT NULL,
-  `order` INT DEFAULT 2147483647 NOT NULL,
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_name`(`name`, `active`)
-) ENGINE = InnoDB;
+CREATE TABLE `rooms` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `label` varchar(255) NOT NULL,
+  `order` int(11) NOT NULL DEFAULT 2147483647,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_name` (`name`,`active`)
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `scene_actions` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `scene_id` INT UNSIGNED NOT NULL,
-  `model` ENUM('device', 'room', 'group') NOT NULL,
-  `model_id` INT UNSIGNED NOT NULL,
-  `action` VARCHAR(255) NOT NULL,
-  `value` VARCHAR(255),
-  `datatype` ENUM('null', 'boolean', 'number', 'string'),
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_scene_id__model__model_id__action`(`scene_id`, `model`, `model_id`, `action`, `active`)
-) ENGINE = InnoDB;
+CREATE TABLE `scene_actions` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `scene_id` int(10) unsigned NOT NULL,
+  `model` enum('device','room','group') NOT NULL,
+  `model_id` int(10) unsigned NOT NULL,
+  `action` varchar(255) NOT NULL,
+  `value` varchar(255) DEFAULT NULL,
+  `datatype` enum('null','boolean','number','string') DEFAULT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_scene_id__model__model_id__action` (`scene_id`,`model`,`model_id`,`action`,`active`)
+) ENGINE=InnoDB AUTO_INCREMENT=58 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 
-CREATE TABLE IF NOT EXISTS `colors` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL,
-  `label` VARCHAR(255) NOT NULL,
-  `value` VARCHAR(9) NOT NULL,
-  `display_value` VARCHAR(9) NOT NULL,
-  `active` BOOLEAN DEFAULT TRUE,
-  PRIMARY KEY `PK_id`(`id`),
-  UNIQUE KEY `UK_name`(`name`, `active`)
-) ENGINE = InnoDB;
+CREATE TABLE `scenes` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `label` varchar(255) NOT NULL,
+  `order` int(11) NOT NULL DEFAULT 2147483647,
+  `active` tinyint(1) DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_name` (`name`,`active`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
-
-INSERT INTO `colors` (`name`, `label`, `value`, `display_value`) VALUES
-('white', 'White', '#ffffff', '#ffffff'),
-('softwhite', 'Soft White', '#fefaf3', '#fefaf3'),
-('gray', 'Gray', '#808080', '#808080'),
-('red', 'Red', '#ff0000', '#ff0000'),
-('tomato', 'Tomato', '#ff6347', '#ff6347'),
-('orange', 'Orange', '#ffa500', '#ffa500'),
-('paleorange', 'Pale Orange', '#ffdfbf', '#ffdfbf'),
-('yellow', 'Yellow', '#ffff00', '#ffff00'),
-('paleyellow', 'Pale Yellow', '#ffffe0', '#ffffe0'),
-('green', 'Green', '#008000', '#008000'),
-('palegreen', 'Pale Green', '#98fb98', '#98fb98'),
-('lime', 'Lime', '#00ff00', '#00ff00'),
-('cyan', 'Cyan', '#00ffff', '#00ffff'),
-('skyblue', 'Sky Blue', '#87ceeb', '#87ceeb'),
-('paleblue', 'Pale Blue', '#afddee', '#afddee'),
-('blue', 'Blue', '#0000ff', '#0000ff'),
-('purple', 'Purple', '#8800ff', '#8800ff'),
-('palepurple', 'Pale Purple', '#e6e6fa', '#e6e6fa'),
-('magenta', 'Magenta', '#ff00ff', '#ff00ff'),
-('pink', 'Pink', '#ffc0ee', '#ffc0ee'),
-('hotpink', 'Hot Pink', '#ff69b4', '#ff69b4'),
-('rose', 'ROSE', '#f00060', '#f00060');
