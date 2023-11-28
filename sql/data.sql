@@ -50,7 +50,7 @@ INSERT INTO smart_home.devices (mfg_id,room_id,name,label,platform,`type`,mfg_mo
 	 ('1909207713761790802548e1e95272d5',(SELECT id FROM rooms WHERE name = 'bedroom_lamp'),'bedroom_lamp','Bedroom lamp','meross_local','bulb','msl120','msl120b','2.1.16','2.0.0',730,1),
 	 ('10021424b4e62d5b11b4_1',(SELECT id FROM rooms WHERE name = 'bedroom'),'matts_charger_socket','Matt''s Charger Socket','tuya','socket','sp25',NULL,'1.0.0','1.0.0',740,1),
 	 ('10021424b4e62d5b11b4_7',(SELECT id FROM rooms WHERE name = 'matts_usb_charger'),'matts_usb_charger_bedroom','Matt''s USB Charger (bedroom)','tuya','socket','sp25',NULL,'1.0.0','1.0.0',750,1),
-	 ('1909204734378290802548e1e9526d76',(SELECT id FROM rooms WHERE name = 'vanity'),'vanity_1','Vanity 1','meross_local','bulb','msl120','msl120b','2.1.16','2.0.0',800,0),
+	 ('1909204734378290802548e1e9526d76',(SELECT id FROM rooms WHERE name = 'vanity'),'vanity_1','Vanity 1','meross_local','bulb','msl120','msl120b','2.1.16','2.0.0',800,1),
 	 ('1909204971291490802548e1e95265f0',(SELECT id FROM rooms WHERE name = 'vanity'),'vanity_2','Vanity 2','meross_local','bulb','msl120','msl120b','2.1.16','2.0.0',810,1),
 	 ('1909207580032190802548e1e95284ad',(SELECT id FROM rooms WHERE name = 'vanity'),'vanity_3','Vanity 3','meross_local','bulb','msl120','msl120b','2.1.16','2.0.0',820,1),
 	 ('1909207860645390802548e1e9526a5e',(SELECT id FROM rooms WHERE name = 'vanity'),'vanity_4','Vanity 4','meross_local','bulb','msl120','msl120b','2.1.16','2.0.0',830,1),
